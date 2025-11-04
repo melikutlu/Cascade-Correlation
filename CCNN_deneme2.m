@@ -34,10 +34,16 @@ max_epochs_candidate = 100;
 g = @(a) tanh(a);
 g_prime = @(v) 1 - v.^2;
 % --- DİNAMİK BÜYÜME PARAMETRELERİ ---
-target_mse = 0.001; % Hedeflenen MSE
+target_mse = 0.0001; % Hedeflenen MSE
 max_hidden_units = 100; 
 num_hidden_units = 0; 
 
+%%%%%GRADİAN PARAMETRE
+eta_output_gd = 0.005; % **** DENEME YAPILMALI ****
+%max_epochs_output = 100; % GD genellikle daha fazla epoch ister
+batch_size = 32;
+
+mse_history = [];
 %% AŞAMA 1: BAŞLANGIÇ AĞI EĞİTİMİ (Quickprop ile)
 fprintf('Aşama 1: Başlangıç ağı (w_o) Quickprop ile eğitiliyor...\n');
 
@@ -50,24 +56,32 @@ X_candidate_input = X_RegressorsWithBias; % Aday birimlerin (w_c) gördüğü
 % --- DÜZELTME (Hata 1) ---
 % trainOutputLayer fonksiyonu zaten eğitimi yapar.
 % Dönen değerler, Aşama 1'in nihai sonuçlarıdır.
-[w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer(...
-    X_output_input, ...
-    T_targets, ...
-    w_o_initial, ...
-    max_epochs_output, ... 
-    eta_output, ...        
-    mu, ...                
-    epsilon);
+%%%%%%%%%QUICKDROP TRAINING%%%%%%%%%%%%%%%%%
+% [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer(...
+%     X_output_input, ...
+%     T_targets, ...
+%     w_o_initial, ...
+%     max_epochs_output, ... 
+%     eta_output, ...        
+%     mu, ...                
+%     epsilon);
+%%%%%GRADİAN TRAINING%%%%%%%%%%%%%%%%%%%
+[w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD(...
+    X_output_input, T_targets, w_o_initial, ...
+    max_epochs_output, eta_output_gd, batch_size);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+T_variance_sum = sum((T_targets - mean(T_targets)).^2);
 
 % DÜZELTME: Tahmin ve hata, EĞİTİLMİŞ w_o_stage1_trained ile hesaplanır
 Y_pred_stage1 = X_output_input * w_o_stage1_trained;
 % E_residual ve current_mse zaten fonksiyondan geldi.
 % Sadece FİT yüzdesini hesaplamamız gerekiyor:
-fit_percentage_train_stage1 = (1 - (sum(E_residual.^2) / ...
-                                    sum((T_targets - mean(T_targets)).^2))) * 100;
+fit_percentage_train_stage1 = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
+                                    
 fprintf('Aşama 1 (Gizli Katmansız) MSE: %f\n', current_mse);
 fprintf('Aşama 1 (Gizli Katmansız) EĞİTİM Fit Yüzdesi: %.2f%%\n', fit_percentage_train_stage1);
-
+mse_history(1) = current_mse; % İlk (0 gizli birim) MSE'sini kaydet
 %% AŞAMA 2: DİNAMİK BİRİM EKLEME DÖNGÜSÜ
 W_hidden = {}; % Dondurulmuş aday birim ağırlıklarını saklamak için
 
@@ -105,16 +119,33 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     % --- DÜZELTME (Hata 2) ---
     % trainOutputLayer'ı GÜNCELLENMİŞ GİRDİLERLE ve
     % YENİ BAŞLANGIÇ AĞIRLIĞI (w_o_initial_new) ile yeniden eğit
-    [w_o_trained, E_residual, current_mse] = trainOutputLayer(...
-        X_output_input, ...    % Boyut [N, 4 + num_hidden_units]
-        T_targets, ...
-        w_o_initial_new, ... % Boyut [4 + num_hidden_units, 1] <-- DOĞRU!
-        max_epochs_output, ... 
-        eta_output, ...        
-        mu, ...                
-        epsilon);
+    %%%%%%%%%QUICKDROP TRAINING%%%%%%%%%%%%%%%%%
+    % [w_o_trained, E_residual, current_mse] = trainOutputLayer(...
+    %     X_output_input, ...    % Boyut [N, 4 + num_hidden_units]
+    %     T_targets, ...
+    %     w_o_initial_new, ... % Boyut [4 + num_hidden_units, 1] <-- DOĞRU!
+    %     max_epochs_output, ... 
+    %     eta_output, ...        
+    %     mu, ...                
+    %     epsilon);
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%GRADİAN TRAINING%%%%%%%%%%%%%%
+
+[w_o_trained, E_residual, current_mse] = trainOutputLayer_GD(...
+    X_output_input, T_targets, w_o_initial_new, ...
+    max_epochs_output, eta_output_gd, batch_size);
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    current_fit = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
+    % --- YENİ KOD BİTİŞ ---
         
-    fprintf('Gizli Birim #%d eklendi. Yeni MSE: %f\n', num_hidden_units, current_mse);
+    % Yazdırma (fprintf) satırını güncelle
+    fprintf('Gizli Birim #%d eklendi. Yeni MSE: %f | YENİ FİT: %.2f%%\n', ...
+            num_hidden_units, current_mse, current_fit);
+
+    mse_history(num_hidden_units + 1) = current_mse;
 end
 fprintf('--- Gizli Birim Ekleme Döngüsü Tamamlandı. Toplam %d birim eklendi ---\n', num_hidden_units);
 
@@ -139,3 +170,6 @@ fprintf('--- Gizli Birim Ekleme Döngüsü Tamamlandı. Toplam %d birim eklendi 
     W_hidden, ...
     g, ...
     'CCNN DOĞRULAMA Performansı');
+
+%% 6. ADIM: KAYIP (LOSS) GELİŞİM GRAFİĞİ
+plotLossHistory(mse_history, target_mse);

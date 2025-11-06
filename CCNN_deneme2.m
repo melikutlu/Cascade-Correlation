@@ -34,7 +34,7 @@ max_epochs_candidate = 100;
 g = @(a) tanh(a);
 g_prime = @(v) 1 - v.^2;
 % --- DİNAMİK BÜYÜME PARAMETRELERİ ---
-target_mse = 0.0001; % Hedeflenen MSE
+target_mse = 0.001; % Hedeflenen MSE
 max_hidden_units = 100; 
 num_hidden_units = 0; 
 
@@ -56,7 +56,7 @@ X_candidate_input = X_RegressorsWithBias; % Aday birimlerin (w_c) gördüğü
 % --- DÜZELTME (Hata 1) ---
 % trainOutputLayer fonksiyonu zaten eğitimi yapar.
 % Dönen değerler, Aşama 1'in nihai sonuçlarıdır.
-%%%%%%%%%QUICKDROP TRAINING%%%%%%%%%%%%%%%%%
+%%%%%%%%%QUICKPROP TRAINING%%%%%%%%%%%%%%%%%
 % [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer(...
 %     X_output_input, ...
 %     T_targets, ...
@@ -69,7 +69,13 @@ X_candidate_input = X_RegressorsWithBias; % Aday birimlerin (w_c) gördüğü
 [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD(...
     X_output_input, T_targets, w_o_initial, ...
     max_epochs_output, eta_output_gd, batch_size);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%GRADIAN FULL BATCH TEST%%%%%%%%%%%%%%%%%%%%%%55
+% [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD_fullbatch(X_output_input, T_targets, w_o_initial, ...
+%                                                       max_epochs_output, eta_output_gd)
+% 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 T_variance_sum = sum((T_targets - mean(T_targets)).^2);
 

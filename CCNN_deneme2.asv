@@ -1,9 +1,8 @@
-% Kaskad Korelasyon (CCNN) - DÜZELTİLMİŞ KOD
-% Amaç: Ağı, hedef hataya ulaşana kadar otomatik olarak büyütme.
+% Kaskad Korelasyon (CCNN)
 clear;
 clc;
 close all;
-rng(0); % Tekrarlanabilir sonuçlar için
+rng(0);
 
 %% 1. VERİ SETİNİ YÜKLEME VE HAZIRLAMA
 load twotankdata;
@@ -21,7 +20,19 @@ num_outputs = 1;
 disp('Veri seti yüklendi ve hazırlandı.');
 
 %% 2. HİPERPARAMETRELER VE YARDIMCI FONKSİYONLAR
-% Quickprop (Çıkış Katmanı) Parametreleri
+
+% --- ÇIKIŞ AĞIRLIKLARI İÇİN EĞİTİM YÖNTEMİ SEÇİMİ ---
+% Seçenekler:
+%   'Quickprop_DL'  -> trainOutputLayer_Quickprop_With_dlgrad.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
+%   'GD_Autograd'   -> trainOutputLayer_GD_Autograd.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
+%   'GD_Fullbatch'  -> trainOutputLayer_GD_fullbatch.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
+%   'GD_MiniBatch'  -> trainOutputLayer_GD.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
+%   'Quickprop_Org' -> trainOutputLayer.m (Quickprop)
+
+config.output_trainer = 'Quickprop_Org'; % <-- DENEME YAPMAK İÇİN SADECE BURAYI DEĞİŞTİRİN
+
+fprintf('*** Seçilen Çıkış Eğitim Yöntemi: %s ***\n', config.output_trainer);
+
 eta_output = 0.0001;
 mu = 1.75;
 max_epochs_output = 100;
@@ -53,42 +64,24 @@ w_o_initial = randn(num_inputs, num_outputs)*0.01; % Ham başlangıç
 X_output_input = X_RegressorsWithBias; % Çıkış katmanının (w_o) gördüğü
 X_candidate_input = X_RegressorsWithBias; % Aday birimlerin (w_c) gördüğü
 
-% --- DÜZELTME (Hata 1) ---
-% trainOutputLayer fonksiyonu zaten eğitimi yapar.
-% Dönen değerler, Aşama 1'in nihai sonuçlarıdır.
-%%%%%%%%%QUICKPROP TRAINING%%%%%%%%%%%%%%%%%
-% [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer(...
-%     X_output_input, ...
-%     T_targets, ...
-%     w_o_initial, ...
-%     max_epochs_output, ... 
-%     eta_output, ...        
-%     mu, ...                
-%     epsilon);
-%%%%%GRADİAN TRAINING%%%%%%%%%%%%%%%%%%%
-% [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD(...
-%     X_output_input, T_targets, w_o_initial, ...
-%     max_epochs_output, eta_output_gd, batch_size);
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%GRADIAN FULL BATCH TEST%%%%%%%%%%%%%%%%%%%%%%55
-% [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD_fullbatch(X_output_input, T_targets, w_o_initial, ...
-%                                                       max_epochs_output, eta_output_gd)
-% 
+fprintf('Aşama 1: Başlangıç ağı (w_o) "%s" ile eğitiliyor...\n', config.output_trainer);
+% Aşama 1:
+% Tüm parametreleri tek bir yapıya toplayın
+all_params.eta_output = eta_output;
+all_params.mu = mu;
+all_params.epsilon = epsilon;
+all_params.eta_output_gd = eta_output_gd;
+all_params.batch_size = batch_size;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%QUICKPROP_DL%%%%%%%%%%%%%%%%%%%%5
-[w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_Quickprop_With_dlgrad(X_output_input, T_targets, w_o_initial, ...
-                                                      max_epochs_output,...
-                                                      eta_output, mu, epsilon);
+[w_o_stage1_trained, E_residual, current_mse] = runOutputTraining(...
+    config.output_trainer, ...
+    X_output_input, ...
+    T_targets, ...
+    w_o_initial, ...
+    max_epochs_output, ...
+    all_params); % Tüm hiperparametreler
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%GRADIAN DL%%%%%%%%%%%%%%%%%%%5
 
-% [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(X_output_input, T_targets, w_o_initial, ...
-%                                                       max_epochs_output, eta_output, batch_size);
-% 
-
-%%%%%%%%%%%%%%%%%%%55
 
 T_variance_sum = sum((T_targets - mean(T_targets)).^2);
 
@@ -135,36 +128,19 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     w_o_initial_new = [w_o_trained;  % ESKİ, EĞİTİLMİŞ AĞIRLIKLARI KORU
                        randn(1, num_outputs) * 0.01];
     
-    % --- DÜZELTME (Hata 2) ---
-    % trainOutputLayer'ı GÜNCELLENMİŞ GİRDİLERLE ve
-    % YENİ BAŞLANGIÇ AĞIRLIĞI (w_o_initial_new) ile yeniden eğit
-    %%%%%%%%%QUICKDROP TRAINING%%%%%%%%%%%%%%%%%
-    % [w_o_trained, E_residual, current_mse] = trainOutputLayer(...
-    %     X_output_input, ...    % Boyut [N, 4 + num_hidden_units]
-    %     T_targets, ...
-    %     w_o_initial_new, ... % Boyut [4 + num_hidden_units, 1] <-- DOĞRU!
-    %     max_epochs_output, ... 
-    %     eta_output, ...        
-    %     mu, ...                
-    %     epsilon);
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%%GRADİAN TRAINING%%%%%%%%%%%%%%
-
-% [w_o_trained, E_residual, current_mse] = trainOutputLayer_GD(...
-%     X_output_input, T_targets, w_o_initial_new, ...
-%     max_epochs_output, eta_output_gd, batch_size);
-
-
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%QUICKPROP DL TRAINING%%%%%%%%%%%%%%
-
-[w_o_trained, E_residual, current_mse] = trainOutputLayer_Quickprop_With_dlgrad(X_output_input, T_targets, w_o_initial_new, ...
-                                                      max_epochs_output, eta_output, mu, epsilon);
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%% GRADIAN DL%%%%%%%%%%%%%%%%%%%%%%5
-% [w_o_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(X_output_input, T_targets, w_o_initial_new, ...
-%                                                       max_epochs_output, eta_output, batch_size);
-
+% --- DÜZELTME (Hata 2) ---
+    % Çıkış katmanını GÜNCELLENMİŞ GİRDİLERLE ve seçilen metotla yeniden eğit
+    
+% Aşama 2.b:
+[w_o_trained, E_residual, current_mse] = runOutputTraining(...
+    config.output_trainer, ...
+    X_output_input, ...
+    T_targets, ...
+    w_o_initial_new, ... % Yeni başlangıç ağırlığı
+    max_epochs_output, ...
+    all_params); % Tüm hiperparametreler
+    
+    
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     current_fit = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;

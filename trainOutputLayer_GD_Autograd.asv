@@ -54,9 +54,9 @@ Y_pred_final = X * w_final_double;
 
 % DÜZELTME (Değişken adları imza ile eşleşmeli):
 E_final = T - Y_pred_final;
-current_mse = 0.5 * mean(E_final(:).^2);
+final_mse = 0.5 * mean(E_final(:).^2);
 
-fprintf('Çıktı katmanı (Mini-Batch Autograd) tamamlandı. Son MSE: %f\n', current_mse);
+fprintf('Çıktı katmanı (Mini-Batch Autograd) tamamlandı. Son MSE: %f\n', final_mse);
 end % Fonksiyonun sonu
 % --- YARDIMCI FONKSİYON (Değişmedi) ---
 function [gradients] = modelGradient(w, X_batch, T_batch)

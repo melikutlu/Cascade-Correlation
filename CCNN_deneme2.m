@@ -70,23 +70,21 @@ X_candidate_input = X_RegressorsWithBias; % Aday birimlerin (w_c) gördüğü
 %     X_output_input, T_targets, w_o_initial, ...
 %     max_epochs_output, eta_output_gd, batch_size);
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%GRADIAN FULL BATCH TEST%%%%%%%%%%%%%%%%%%%%%%55
+% %%%%%%%%%%%%%%GRADIAN FULL BATCH TEST%%%%%%%%%%%%%%%%%%%%%%55
 % [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD_fullbatch(X_output_input, T_targets, w_o_initial, ...
 %                                                       max_epochs_output, eta_output_gd)
-% 
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%QUICKPROP_DL%%%%%%%%%%%%%%%%%%%%5
-[w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_Quickprop_With_dlgrad(X_output_input, T_targets, w_o_initial, ...
-                                                      max_epochs_output,...
-                                                      eta_output, mu, epsilon);
+% %%%%%%%%%%%%%%%QUICKPROP_DL%%%%%%%%%%%%%%%%%%%%5
+% [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_Quickprop_With_dlgrad(X_output_input, T_targets, w_o_initial, ...
+%                                                       max_epochs_output,...
+%                                                       eta_output, mu, epsilon);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%GRADIAN DL%%%%%%%%%%%%%%%%%%%5
-
-% [w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(X_output_input, T_targets, w_o_initial, ...
-%                                                       max_epochs_output, eta_output, batch_size);
-% 
+[w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(X_output_input, T_targets, w_o_initial, ...
+                                                      max_epochs_output, eta_output_gd, batch_size);
 
 %%%%%%%%%%%%%%%%%%%55
 
@@ -153,18 +151,17 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
 % [w_o_trained, E_residual, current_mse] = trainOutputLayer_GD(...
 %     X_output_input, T_targets, w_o_initial_new, ...
 %     max_epochs_output, eta_output_gd, batch_size);
-
+% 
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%QUICKPROP DL TRAINING%%%%%%%%%%%%%%
 
-[w_o_trained, E_residual, current_mse] = trainOutputLayer_Quickprop_With_dlgrad(X_output_input, T_targets, w_o_initial_new, ...
-                                                      max_epochs_output, eta_output, mu, epsilon);
+% [w_o_trained, E_residual, current_mse] = trainOutputLayer_Quickprop_With_dlgrad(X_output_input, T_targets, w_o_initial_new, ...
+%                                                       max_epochs_output, eta_output, mu, epsilon);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%% GRADIAN DL%%%%%%%%%%%%%%%%%%%%%%5
-% [w_o_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(X_output_input, T_targets, w_o_initial_new, ...
-%                                                       max_epochs_output, eta_output, batch_size);
-
+% %%%%%%%%%%% GRADIAN DL%%%%%%%%%%%%%%%%%%%%%%5
+[w_o_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(X_output_input, T_targets, w_o_initial_new, ...
+                                                      max_epochs_output, eta_output_gd, batch_size);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     current_fit = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;

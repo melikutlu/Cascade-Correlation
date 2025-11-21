@@ -4,6 +4,14 @@ clc;
 close all;
 rng(0); % Tekrarlanabilir sonuçlar için
 
+% --- ÇIKIŞ AĞIRLIKLARI İÇİN EĞİTİM YÖNTEMİ SEÇİMİ ---
+% Seçenekler:
+%   'Quickprop_DL'  -> trainOutputLayer_Quickprop_With_dlgrad.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
+%   'GD_Autograd'   -> trainOutputLayer_GD_Autograd.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
+%   'GD_Fullbatch'  -> trainOutputLayer_GD_fullbatch.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
+%   'GD_MiniBatch'  -> trainOutputLayer_GD.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
+%   'Quickprop_Org' -> trainOutputLayer.m (Quickprop)
+
 %% 1. VERİ SETİNİ YÜKLEME VE HAZIRLAMA
 load twotankdata;
 z1f_full = iddata(y, u, 0.2, 'Name', 'Two-tank system');
@@ -27,7 +35,8 @@ config.output_trainer = 'GD_Autograd';  % 'Quickprop_Org', 'GD_Autograd', 'GD_Fu
 
 fprintf('*** Seçilen Çıkış Eğitim Yöntemi: %s ***\n', config.output_trainer);
 
-eta_output = 0.0001;
+eta_output = 0.001;
+eta_output_gd = 0.005;
 mu = 1.75;
 max_epochs_output = 100;
 min_mse_change = 1e-7;
@@ -44,7 +53,7 @@ max_hidden_units = 100;
 num_hidden_units = 0; 
 
 %%%%%GRADİAN PARAMETRE
-eta_output_gd = 0.005; 
+
 batch_size = 32;
 
 mse_history = [];
@@ -58,12 +67,12 @@ w_o_initial = randn(num_inputs, num_outputs)*0.01; % Ham başlangıç
 X_output_input = X_RegressorsWithBias; % Çıkış katmanının (w_o) gördüğü
 X_candidate_input = X_RegressorsWithBias; % Aday birimlerin (w_c) gördüğü
 
-% Aşama 1: Eğitim fonksiyonunu çalıştır
-% Tüm parametreleri tek bir yapıya toplayın
-all_params.eta_output = eta_output;
+
+batch_size = 32;
 all_params.mu = mu;
 all_params.epsilon = epsilon;
 all_params.eta_output_gd = eta_output_gd;
+all_params.eta_output = eta_output;
 all_params.batch_size = batch_size;
 
 [w_o_stage1_trained, E_residual, current_mse] = runOutputTraining(...

@@ -91,7 +91,7 @@ function [w_o_trained, E_final, current_mse, Y_pred] = trainOutputLayer_GD_Autog
         end
 
         % Bu epoch'un ortalama loss'u (sadece çıktı için, durdurma vs. kullanabilirsin)
-        avg_epoch_loss = epoch_loss / num_batches;
+        % avg_epoch_loss = epoch_loss / num_batches;
 
         % İstersen ekrana yaz:
         % fprintf('Epoch %d / %d - Ortalama MSE: %.6f\n', epoch, max_epochs, avg_epoch_loss);

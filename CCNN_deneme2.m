@@ -83,8 +83,9 @@ X_candidate_input = X_RegressorsWithBias; % Aday birimlerin (w_c) gördüğü
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%GRADIAN DL%%%%%%%%%%%%%%%%%%%5
-[w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(X_output_input, T_targets, w_o_initial, ...
-                                                      max_epochs_output, eta_output_gd, batch_size);
+[w_o_stage1_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(...
+    X_output_input, T_targets, w_o_initial, ...
+    max_epochs_output, eta_output_gd, batch_size);
 
 %%%%%%%%%%%%%%%%%%%55
 
@@ -113,9 +114,17 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     fprintf('\n--- Gizli Birim #%d Ekleniyor ---\n', num_hidden_units);
     
     % --- AŞAMA 2.a: ADAY BİRİM EĞİTİMİ ---
-    [w_new_hidden, v_new_hidden] = ...
-        trainCandidateUnit(X_candidate_input, E_residual, ...
-                           max_epochs_candidate, eta_candidate, g, g_prime);
+    % [w_new_hidden, v_new_hidden] = ...
+    %     trainCandidateUnit(X_candidate_input, E_residual, ...
+    %                        max_epochs_candidate, eta_candidate, g, g_prime);
+
+
+ %%%%%%%%%%%%%%%%%%%%  DL ARRAY İLE HESAP %%%%%%%%%%%%%%%%%%%%
+
+
+ [w_new_hidden, v_new_hidden] = trainCandidateUnit_DL(X_candidate_input, E_residual, ...
+                                                    max_epochs_candidate, eta_candidate, g, g_prime);
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
     
     % Ağırlıkları ileride kullanmak için sakla (Hata 4 için kontrol)
     W_hidden{num_hidden_units} = w_new_hidden;

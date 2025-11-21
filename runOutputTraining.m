@@ -9,7 +9,7 @@ function [w_trained, E_residual, current_mse] = runOutputTraining(method, X, T, 
                                                       max_epochs, params.eta_output, params.mu, params.epsilon);
         case 'GD_Autograd'
             [w_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(X, T, w_initial, ...
-                                                      max_epochs, params.eta_output, params.batch_size);
+                                                      max_epochs, params.eta_output_gd, params.batch_size);
         case 'GD_Fullbatch'
             [w_trained, E_residual, current_mse] = trainOutputLayer_GD_fullbatch(X, T, w_initial, ...
                                                       max_epochs, params.eta_output_gd);

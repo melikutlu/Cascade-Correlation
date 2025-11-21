@@ -1,8 +1,16 @@
-% Kaskad Korelasyon (CCNN)
+% Kaskad Korelasyon (CCNN) - Geliştirilmiş Kodu
 clear;
 clc;
 close all;
-rng(0);
+rng(0); % Tekrarlanabilir sonuçlar için
+
+% --- ÇIKIŞ AĞIRLIKLARI İÇİN EĞİTİM YÖNTEMİ SEÇİMİ ---
+% Seçenekler:
+%   'Quickprop_DL'  -> trainOutputLayer_Quickprop_With_dlgrad.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
+%   'GD_Autograd'   -> trainOutputLayer_GD_Autograd.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
+%   'GD_Fullbatch'  -> trainOutputLayer_GD_fullbatch.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
+%   'GD_MiniBatch'  -> trainOutputLayer_GD.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
+%   'Quickprop_Org' -> trainOutputLayer.m (Quickprop)
 
 %% 1. VERİ SETİNİ YÜKLEME VE HAZIRLAMA
 load twotankdata;
@@ -22,18 +30,13 @@ disp('Veri seti yüklendi ve hazırlandı.');
 %% 2. HİPERPARAMETRELER VE YARDIMCI FONKSİYONLAR
 
 % --- ÇIKIŞ AĞIRLIKLARI İÇİN EĞİTİM YÖNTEMİ SEÇİMİ ---
-% Seçenekler:
-%   'Quickprop_DL'  -> trainOutputLayer_Quickprop_With_dlgrad.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
-%   'GD_Autograd'   -> trainOutputLayer_GD_Autograd.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
-%   'GD_Fullbatch'  -> trainOutputLayer_GD_fullbatch.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
-%   'GD_MiniBatch'  -> trainOutputLayer_GD.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
-%   'Quickprop_Org' -> trainOutputLayer.m (Quickprop)
-
-config.output_trainer = 'Quickprop_Org'; % <-- DENEME YAPMAK İÇİN SADECE BURAYI DEĞİŞTİRİN
+% Kullanıcıya farklı seçenekler sunuluyor.
+config.output_trainer = 'GD_Autograd';  % 'Quickprop_Org', 'GD_Autograd', 'GD_Fullbatch', 'GD_MiniBatch', 'Quickprop_DL'
 
 fprintf('*** Seçilen Çıkış Eğitim Yöntemi: %s ***\n', config.output_trainer);
 
-eta_output = 0.0001;
+eta_output = 0.001;
+eta_output_gd = 0.005;
 mu = 1.75;
 max_epochs_output = 100;
 min_mse_change = 1e-7;
@@ -50,12 +53,13 @@ max_hidden_units = 100;
 num_hidden_units = 0; 
 
 %%%%%GRADİAN PARAMETRE
-eta_output_gd = 0.005; 
+
 batch_size = 32;
 
 mse_history = [];
-%% AŞAMA 1: BAŞLANGIÇ AĞI EĞİTİMİ (Quickprop ile)
-fprintf('Aşama 1: Başlangıç ağı (w_o) Quickprop ile eğitiliyor...\n');
+
+%% AŞAMA 1: BAŞLANGIÇ AĞI EĞİTİMİ (Seçilen Yönteme Göre)
+fprintf('Aşama 1: Başlangıç ağı (w_o) "%s" ile eğitiliyor...\n', config.output_trainer);
 
 w_o_initial = randn(num_inputs, num_outputs)*0.01; % Ham başlangıç
 
@@ -63,13 +67,12 @@ w_o_initial = randn(num_inputs, num_outputs)*0.01; % Ham başlangıç
 X_output_input = X_RegressorsWithBias; % Çıkış katmanının (w_o) gördüğü
 X_candidate_input = X_RegressorsWithBias; % Aday birimlerin (w_c) gördüğü
 
-fprintf('Aşama 1: Başlangıç ağı (w_o) "%s" ile eğitiliyor...\n', config.output_trainer);
-% Aşama 1:
-% Tüm parametreleri tek bir yapıya toplayın
-all_params.eta_output = eta_output;
+
+batch_size = 32;
 all_params.mu = mu;
 all_params.epsilon = epsilon;
 all_params.eta_output_gd = eta_output_gd;
+all_params.eta_output = eta_output;
 all_params.batch_size = batch_size;
 
 [w_o_stage1_trained, E_residual, current_mse] = runOutputTraining(...
@@ -80,8 +83,6 @@ all_params.batch_size = batch_size;
     max_epochs_output, ...
     all_params); % Tüm hiperparametreler
 
-
-
 T_variance_sum = sum((T_targets - mean(T_targets)).^2);
 
 % DÜZELTME: Tahmin ve hata, EĞİTİLMİŞ w_o_stage1_trained ile hesaplanır
@@ -89,15 +90,14 @@ Y_pred_stage1 = X_output_input * w_o_stage1_trained;
 % E_residual ve current_mse zaten fonksiyondan geldi.
 % Sadece FİT yüzdesini hesaplamamız gerekiyor:
 fit_percentage_train_stage1 = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
-                                    
+
 fprintf('Aşama 1 (Gizli Katmansız) MSE: %f\n', current_mse);
 fprintf('Aşama 1 (Gizli Katmansız) EĞİTİM Fit Yüzdesi: %.2f%%\n', fit_percentage_train_stage1);
 mse_history(1) = current_mse; % İlk (0 gizli birim) MSE'sini kaydet
+
 %% AŞAMA 2: DİNAMİK BİRİM EKLEME DÖNGÜSÜ
 W_hidden = {}; % Dondurulmuş aday birim ağırlıklarını saklamak için
 
-% DÜZELTME (Hata 5): w_o_trained, döngüde güncellenecek olan son ağırlıktır
-% Başlangıç değeri, Aşama 1'de eğittiğimiz değerdir.
 w_o_trained = w_o_stage1_trained;
 
 fprintf('\n--- GİZLİ BİRİM EKLEME DÖNGÜSÜ BAŞLATILDI ---\n');
@@ -107,11 +107,10 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     fprintf('\n--- Gizli Birim #%d Ekleniyor ---\n', num_hidden_units);
     
     % --- AŞAMA 2.a: ADAY BİRİM EĞİTİMİ ---
-    [w_new_hidden, v_new_hidden] = ...
-        trainCandidateUnit(X_candidate_input, E_residual, ...
+    [w_new_hidden, v_new_hidden] = trainCandidateUnit(X_candidate_input, E_residual, ...
                            max_epochs_candidate, eta_candidate, g, g_prime);
     
-    % Ağırlıkları ileride kullanmak için sakla (Hata 4 için kontrol)
+    % Ağırlıkları ileride kullanmak için sakla
     W_hidden{num_hidden_units} = w_new_hidden;
     
     % --- AŞAMA 2.b: ÇIKTI KATMANINI YENİDEN EĞİTME ---
@@ -121,31 +120,19 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     X_output_input = [X_output_input, v_new_hidden];
     X_candidate_input = [X_candidate_input, v_new_hidden];
     
-    % Strateji: Ağırlıkları sıfırdan eğit (Sizin "daha basit" dediğiniz yöntem)
-    [~, num_output_inputs_new] = size(X_output_input);
-    %w_o_initial_new = randn(num_output_inputs_new, num_outputs) * 0.01;
     w_o_initial_new = [w_o_trained;  % ESKİ, EĞİTİLMİŞ AĞIRLIKLARI KORU
                        randn(1, num_outputs) * 0.01];
     
-% --- DÜZELTME (Hata 2) ---
     % Çıkış katmanını GÜNCELLENMİŞ GİRDİLERLE ve seçilen metotla yeniden eğit
-    
-% Aşama 2.b:
-[w_o_trained, E_residual, current_mse] = runOutputTraining(...
-    config.output_trainer, ...
-    X_output_input, ...
-    T_targets, ...
-    w_o_initial_new, ... % Yeni başlangıç ağırlığı
-    max_epochs_output, ...
-    all_params); % Tüm hiperparametreler
-    
-    
+    [w_o_trained, E_residual, current_mse] = runOutputTraining(...
+        config.output_trainer, ...
+        X_output_input, ...
+        T_targets, ...
+        w_o_initial_new, ... % Yeni başlangıç ağırlığı
+        max_epochs_output, ...
+        all_params); % Tüm hiperparametreler
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     current_fit = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
-    % --- YENİ KOD BİTİŞ ---
-        
-    % Yazdırma (fprintf) satırını güncelle
     fprintf('Gizli Birim #%d eklendi. Yeni MSE: %f | YENİ FİT: %.2f%%\n', ...
             num_hidden_units, current_mse, current_fit);
 
@@ -156,7 +143,7 @@ fprintf('--- Gizli Birim Ekleme Döngüsü Tamamlandı. Toplam %d birim eklendi 
 %% 3. EĞİTİM SONUÇLARINI GÖRSELLEŞTİRME
 
 % (Eski AŞAMA 3'ün yerine geçer)
-[Y_pred_final, fit_percentage_train_final] = plotTrainingResults(...
+[Y_pred_final, fit_percentage_train_final] = plotTrainingResults(... 
     T_targets, ...
     Y_pred_stage1, ...
     fit_percentage_train_stage1, ...
@@ -165,10 +152,9 @@ fprintf('--- Gizli Birim Ekleme Döngüsü Tamamlandı. Toplam %d birim eklendi 
     num_hidden_units);
 
 %% 4. ADIM: DOĞRULAMA (VALIDATION) İLE PERFORMANS TESTİ
-% (Eski AŞAMA 4 ve 5'in yerine geçer)
 [fit_val, fit_val_stage1] = evaluateModel(...
     z1f_full, ...
-    1501:3000, ... % Doğrulama verisi indisleri
+    1501:3000, ...
     w_o_stage1_trained, ...
     w_o_trained, ...
     W_hidden, ...

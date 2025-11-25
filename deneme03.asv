@@ -4,7 +4,7 @@ clc;
 close all;
 rng(0);
 
-%% 1. VERİ SETİNİ YÜKLEME VE HAZIRLAMA%% 1. VERİ SETİNİ YÜKLEME VE HAZIRLAMA
+%% 1. VERİ SETİNİ YÜKLEME VE HAZIRLAMA
 load twotankdata;
 z1f_full = iddata(y, u, 0.2, 'Name', 'Two-tank system');
 z1 = z1f_full(1:1500);
@@ -14,9 +14,21 @@ z1f = z1f(20:end);
 u_data = z1f.u;
 t_data = z1f.y;
 
-% -- DÜZELTME BURADA --
-L = length(u_data); % Uzunluğu baştan alıyoruz, 'end' karışıklığını önlüyoruz.
+% --- NORMALİZASYON EKLENİYOR ---
+% Giriş ve çıkış verilerini normalize et
+u_mean = mean(u_data);
+u_std = std(u_data);
+t_mean = mean(t_data);
+t_std = std(t_data);
 
+u_data_normalized = (u_data - u_mean) / u_std;
+t_data_normalized = (t_data - t_mean) / t_std;
+
+% Normalize edilmiş verileri kullan
+u_data = u_data_normalized;
+t_data = t_data_normalized;
+
+L = length(u_data);
 % Girişler: u(k-1), u(k-2), y(k-1), y(k-2)
 % Hedef: y(k)
 % Veri mecburen 3. adımdan başlayacak (çünkü k-2'ye ihtiyacımız var)
@@ -45,7 +57,7 @@ disp('Veri seti yüklendi. Yapı: 2. Dereceden (Lag=2)');
 %   'GD_MiniBatch'  -> trainOutputLayer_GD.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
 %   'Quickprop_Org' -> trainOutputLayer.m (Quickprop)
 
-config.output_trainer = 'Quickprop_DL'; % <-- DENEME YAPMAK İÇİN SADECE BURAYI DEĞİŞTİRİN
+config.output_trainer = 'Quickprop_Org'; % <-- DENEME YAPMAK İÇİN SADECE BURAYI DEĞİŞTİRİN
 
 fprintf('*** Seçilen Çıkış Eğitim Yöntemi: %s ***\n', config.output_trainer);
 
@@ -56,7 +68,7 @@ min_mse_change = 1e-7;
 epsilon = 1e-8;
 % Gradient Ascent (Aday Katman) Parametreleri
 eta_candidate = 0.00005;
-max_epochs_candidate = 100;
+max_epochs_candidate = 1000;
 % Aktivasyon Fonksiyonları
 g = @(a) tanh(a);
 g_prime = @(v) 1 - v.^2;
@@ -157,7 +169,24 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     current_fit = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
-    
+    mse_improvement = mse_history(end) - current_mse;
+        min_mse_improvement = 1e-6; % Durma eşiği
+
+        % Kalan MSE'yi tarihe kaydet (artık doğru sırada)
+        mse_history(num_hidden_units + 1) = current_mse;
+        
+        % Durma Kriteri Kontrolü
+        if mse_improvement < min_mse_improvement
+            fprintf('Gizli Birim #%d eklendi. YENİ FİT: %.2f%%\n', num_hidden_units, current_fit);
+            fprintf('*** MSE iyileşmesi durma eşiği (%.2e) altında kaldı. Döngü sonlandırılıyor. ***\n', min_mse_improvement);
+            break; % While döngüsünden çık
+        end
+        else
+            % İlk (0. birim) MSE'sini buraya kaydediyoruz
+            % NOT: İlk MSE zaten döngü öncesinde kaydedildiği için bu blok gereksiz olabilir. 
+            % Ancak yapıyı korumak için, yine de son MSE'yi döngü sonunda kaydetmeliyiz.
+            mse_history(num_hidden_units + 1) = current_mse;
+        end
     % --- DÜZELTME BAŞLANGIÇ ---
     if num_hidden_units > 0 % Sadece en az 1 birim eklendiyse (yani döngü 2. kez çalışıyorsa) bu kontrolü yap
         
@@ -189,8 +218,6 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
 end
 fprintf('--- Gizli Birim Ekleme Döngüsü Tamamlandı. Toplam %d birim eklendi ---\n', num_hidden_units);
 %% 3. EĞİTİM SONUÇLARINI GÖRSELLEŞTİRME
-
-% (Eski AŞAMA 3'ün yerine geçer)
 [Y_pred_final, fit_percentage_train_final] = plotTrainingResults(...
     T_targets, ...
     Y_pred_stage1, ...
@@ -199,66 +226,77 @@ fprintf('--- Gizli Birim Ekleme Döngüsü Tamamlandı. Toplam %d birim eklendi 
     w_o_trained, ...
     num_hidden_units);
 
+% --- NORMALİZE TAHMİNLERİ ORİJİNAL ÖLÇEĞE ÇEVİR ---
+T_targets_original = denormalize_output(T_targets, t_mean, t_std);
+Y_pred_stage1_original = denormalize_output(Y_pred_stage1, t_mean, t_std);
+Y_pred_final_original = denormalize_output(Y_pred_final, t_mean, t_std);
+
+% Orijinal ölçekte fit yüzdesini hesapla
+fit_percentage_train_stage1_original = (1 - (sum((T_targets_original - Y_pred_stage1_original).^2) / ...
+                                       sum((T_targets_original - mean(T_targets_original)).^2))) * 100;
+fit_percentage_train_final_original = (1 - (sum((T_targets_original - Y_pred_final_original).^2) / ...
+                                     sum((T_targets_original - mean(T_targets_original)).^2))) * 100;
+
+fprintf('ORİJİNAL ÖLÇEK - Aşama 1 Fit: %.2f%%, Final Fit: %.2f%%\n', ...
+        fit_percentage_train_stage1_original, fit_percentage_train_final_original);
+
 %% 4. ADIM: DOĞRULAMA (VALIDATION) İLE PERFORMANS TESTİ
-% (Eski AŞAMA 4 ve 5'in yerine geçer)
 [fit_val, fit_val_stage1] = evaluateModel_1(...
     z1f_full, ...
-    1501:3000, ... % Doğrulama verisi indisleri
+    1501:3000, ...
     w_o_stage1_trained, ...
     w_o_trained, ...
     W_hidden, ...
     g, ...
-    'CCNN DOĞRULAMA Performansı');
-
+    'CCNN DOĞRULAMA Performansı', ...
+    u_mean, u_std, t_mean, t_std); % Normalizasyon parametrelerini ekle
 %% 6. ADIM: KAYIP (LOSS) GELİŞİM GRAFİĞİ
 plotLossHistory(mse_history, target_mse);
 %% 7. ADIM: SİMÜLASYON MODU (Recursive Prediction / Free Run)
 fprintf('\n--- Simülasyon (Free Run) Modu Başlatılıyor ---\n');
 
-% Doğrulama verilerini hazırla (Validation set: 1501:3000 arası)
-% Not: z1f_full tüm veriyi içeriyor.
 val_indices = 1501:3000; 
 data_val = z1f_full(val_indices);
-u_val_raw = data_val.u; % Filtresiz ham veri
+u_val_raw = data_val.u;
 y_val_raw = data_val.y;
 
-% Eğer veriyi filtrelediyseniz (z1f gibi), aynı filtreyi burada da uygulayın
-% veya doğrudan z1f içinden ilgili kısmı çekin (eğer z1f tüm datayı kapsıyorsa).
-% Kodunuzda: z1f = idfilt(z1...); z1 sadece ilk 1500'dü. 
-% Doğrulama için ikinci yarıyı (1501-3000) da filtreleyelim:
 z2 = z1f_full(val_indices);
-z2f = idfilt(z2, 3, 0.066902); % Aynı filtre parametreleri
+z2f = idfilt(z2, 3, 0.066902);
 u_val = z2f.u;
 y_val = z2f.y;
 
-% --- SİMÜLASYON FONKSİYONUNU ÇAĞIR ---
-[y_simulation, fit_simulation] = simulateCCNNModel(...
-    u_val, ...
-    y_val, ...
+% --- DOĞRULAMA VERİSİNİ DE NORMALİZE ET ---
+u_val_normalized = (u_val - u_mean) / u_std;
+y_val_normalized = (y_val - t_mean) / t_std;
+
+% Normalize edilmiş verilerle simülasyon yap
+[y_simulation_normalized, fit_simulation] = simulateCCNNModel(...
+    u_val_normalized, ...
+    y_val_normalized, ...
     w_o_trained, ...
     W_hidden, ...
     g);
 
-fprintf('Simülasyon (Infinite Horizon) Fit Yüzdesi: %.2f%%\n', fit_simulation);
+% Simülasyon çıktısını orijinal ölçeğe çevir
+y_simulation_original = denormalize_output(y_simulation_normalized, t_mean, t_std);
 
-% --- KARŞILAŞTIRMALI GRAFİK ÇİZ ---
-figure('Name', 'CCNN: Prediction vs Simulation', 'Color', 'w');
-time_axis = 1:length(y_val);
+% Orijinal ölçekte fit hesapla
+fit_simulation_original = (1 - (norm(y_val - y_simulation_original) / norm(y_val - mean(y_val)))) * 100;
 
-% 1. Gerçek Veri
-plot(time_axis, y_val, 'k', 'LineWidth', 1.5, 'DisplayName', 'Gerçek Veri'); hold on;
+fprintf('Simülasyon (Normalize) Fit Yüzdesi: %.2f%%\n', fit_simulation);
+fprintf('Simülasyon (Orijinal) Fit Yüzdesi: %.2f%%\n', fit_simulation_original);
 
-% 2. One-Step Prediction (Eski validation sonucu - Eğer varsa buraya eklenir)
-% (Burada görsel karmaşayı önlemek için sadece simülasyonu çiziyoruz, 
-% ama isterseniz fit_val hesapladığınız Y_pred'i de çizebilirsiniz)
-
-% 3. Simülasyon (Modelin kendi ürettiği feedback)
-plot(time_axis, y_simulation, 'r--', 'LineWidth', 1.2, 'DisplayName', 'Simülasyon (Free Run)');
-
-title(['Validasyon Verisi Üzerinde Simülasyon Başarısı (Fit: %' num2str(fit_simulation, '%.2f') ')']);
-xlabel('Zaman Adımları');
-ylabel('Çıkış (Seviye)');
-legend('Location', 'Best');
+%% 8. ADIM: BASİT SİMÜLASYON GRAFİĞİ
+time_axis = (1:length(y_val))'; % Örnek numaraları
+figure('Name', 'CCNN Simülasyon Sonuçları', 'Color', 'w');
+plot(time_axis, y_val, 'k-', 'LineWidth', 2, 'DisplayName', 'Gerçek Değerler');
+hold on;
+plot(time_axis, y_simulation_original, 'r--', 'LineWidth', 1.5, 'DisplayName', sprintf('Simülasyon (Fit: %.2f%%)', fit_simulation_original));
+hold off;
+title('CCNN Simülasyon: Gerçek vs Tahmin Edilen Çıkışlar');
+xlabel('Zaman (saniye)');
+ylabel('Su Seviyesi');
+legend('Location', 'best');
 grid on;
 
 
@@ -300,10 +338,17 @@ function [y_sim, fit_sim] = simulateCCNNModel(u_val, y_real_val, w_o, W_hidden, 
         % 3. Çıkış
         y_sim(k) = current_input * w_o;
     end
-    % Simülasyon çıktısı fiziksel olarak sıfırın altına düşemez.Çünkü
-    % yükseklik negatif olamaz.
-    y_sim = max(0, y_sim); 
+    
     % Fit Hesabı
     % NRMSE Fit formülü
     fit_sim = (1 - (norm(y_real_val - y_sim) / norm(y_real_val - mean(y_real_val)))) * 100;
+end
+
+%% DENORMALİZASYON FONKSİYONLARI
+function y_original = denormalize_output(y_normalized, t_mean, t_std)
+    y_original = y_normalized * t_std + t_mean;
+end
+
+function u_original = denormalize_input(u_normalized, u_mean, u_std)
+    u_original = u_normalized * u_std + u_mean;
 end

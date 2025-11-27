@@ -6,13 +6,22 @@ rng(0);
 
 %% 1. VERİ SETİNİ YÜKLEME VE HAZIRLAMA%% 1. VERİ SETİNİ YÜKLEME VE HAZIRLAMA
 load twotankdata;
-z1f_full = iddata(y, u, 0.2, 'Name', 'Two-tank system');
-z1 = z1f_full(1:1500);
+%Eğitim verisi
+z_full = iddata(y, u, 0.2, 'Name', 'Two-tank system');
+z1 = z_full(1:1500);
 z1f = idfilt(z1, 3, 0.066902);
 z1f = z1f(20:end);
-
 u_data = z1f.u;
 t_data = z1f.y;
+
+%Doğrulama verisi
+z2 = z_full(1501:3000);
+z2f = idfilt(z2, 3, 0.066902); % Aynı filtre parametreleri
+z2f = z2f(20:end);
+u_val = z2f.u;
+y_val = z2f.y;
+
+
 
 % -- DÜZELTME BURADA --
 L = length(u_data); % Uzunluğu baştan alıyoruz, 'end' karışıklığını önlüyoruz.
@@ -202,7 +211,7 @@ fprintf('--- Gizli Birim Ekleme Döngüsü Tamamlandı. Toplam %d birim eklendi 
 %% 4. ADIM: DOĞRULAMA (VALIDATION) İLE PERFORMANS TESTİ
 % (Eski AŞAMA 4 ve 5'in yerine geçer)
 [fit_val, fit_val_stage1] = evaluateModel_1(...
-    z1f_full, ...
+    z_full, ...
     1501:3000, ... % Doğrulama verisi indisleri
     w_o_stage1_trained, ...
     w_o_trained, ...
@@ -214,22 +223,6 @@ fprintf('--- Gizli Birim Ekleme Döngüsü Tamamlandı. Toplam %d birim eklendi 
 plotLossHistory(mse_history, target_mse);
 %% 7. ADIM: SİMÜLASYON MODU (Recursive Prediction / Free Run)
 fprintf('\n--- Simülasyon (Free Run) Modu Başlatılıyor ---\n');
-
-% Doğrulama verilerini hazırla (Validation set: 1501:3000 arası)
-% Not: z1f_full tüm veriyi içeriyor.
-val_indices = 1501:3000; 
-data_val = z1f_full(val_indices);
-u_val_raw = data_val.u; % Filtresiz ham veri
-y_val_raw = data_val.y;
-
-% Eğer veriyi filtrelediyseniz (z1f gibi), aynı filtreyi burada da uygulayın
-% veya doğrudan z1f içinden ilgili kısmı çekin (eğer z1f tüm datayı kapsıyorsa).
-% Kodunuzda: z1f = idfilt(z1...); z1 sadece ilk 1500'dü. 
-% Doğrulama için ikinci yarıyı (1501-3000) da filtreleyelim:
-z2 = z1f_full(val_indices);
-z2f = idfilt(z2, 3, 0.066902); % Aynı filtre parametreleri
-u_val = z2f.u;
-y_val = z2f.y;
 
 % --- SİMÜLASYON FONKSİYONUNU ÇAĞIR ---
 [y_simulation, fit_simulation] = simulateCCNNModel(...

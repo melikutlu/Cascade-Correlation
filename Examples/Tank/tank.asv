@@ -1,0 +1,75 @@
+%% 1. Veri Yükleme ve Hazırlık
+clc; clear; close all;
+
+% Two-tank verisini yükle
+load twotankdata
+
+% Tüm veriyi iddata formatına çevir
+z_all = iddata(y, u, 0.2, 'Name', 'Two-tank system');
+
+% Veriyi Eğitim (Estimation) ve Doğrulama (Validation) olarak ikiye böl
+z1 = z_all(1:1500);      % Eğitim verisi
+z2 = z_all(1501:3000);   % Doğrulama verisi
+
+% Ham verileri çizdir
+figure('Name', 'Ham Veriler');
+plot(z1, z2);
+legend('Estimation (Eğitim)', 'Validation (Doğrulama)');
+
+%% 2. Filtreleme İşlemi (Gürültü Azaltma)
+% Butterworth filtresi uygula (Stopband frequency: 0.066902 rad/sample)
+z1f = idfilt(z1, 3, 0.066902);
+z2f = idfilt(z2, 3, 0.066902);
+
+% Filtrenin başındaki geçici (transient) etkileri atmak için ilk 20 veriyi sil
+z1f = z1f(20:end);
+z2f = z2f(20:end);
+
+% Filtreli ve Filtresiz Veriyi Karşılaştır
+figure('Name', 'Filtreleme Sonucu');
+subplot(2,1,1);
+plot(z1(20:end), 'b', z1f, 'r');
+legend('Ham Eğitim', 'Filtreli Eğitim');
+title('Eğitim Verisi Filtreleme');
+
+subplot(2,1,2);
+plot(z2(20:end), 'b', z2f, 'r');
+legend('Ham Doğrulama', 'Filtreli Doğrulama');
+title('Doğrulama Verisi Filtreleme');
+
+%% 3. Model Ayarları (Cascade-Correlation Neural Network)
+% Sinir ağı yapısını oluştur
+f = idNeuralNetwork("cascade-correlation", "sigmoid", 0, 0, ...
+    'MaxNumActLayers', 100, 'SizeSelection', 'off');
+
+% NLARX Seçeneklerini ayarla
+opt = nlarxOptions;
+opt.SearchOptions.MaxIterations = 0; % Sadece ağ büyümesiyle eğit, ince ayar yapma (hız için)
+opt.NormalizationOptions.NormalizationMethod = 'norm';
+opt.CrossValidationOptions.HoldoutFraction = 0.1; % Verinin %10'unu ayır
+
+%% 4. Modeli Eğitme
+% DİKKAT: Two-Tank sistemi Tek Giriş - Tek Çıkışlıdır (SISO).
+% Orders = [na nb nk] formatında olmalı. (Çıkış gecikmesi, Giriş gecikmesi, Ölü zaman)
+orders = [2 2 0]; 
+
+% Modeli eğit (eData yerine filtrelenmiş z1f kullanıyoruz)
+fprintf('Model eğitiliyor...\n');
+sys1 = nlarx(z1f, orders, f, opt);
+
+% Model yapısını ekrana yazdır
+disp('Model Yapısı:');
+sys1.OutputFcn
+
+%% 5. Sonuçları Karşılaştırma (Validation)
+figure('Name', 'Model Performansı');
+
+% Eğitim verisi üzerindeki başarı
+subplot(2,1,1);
+compare(z1f, sys1);
+title('Eğitim Verisi Uyumu');
+
+% Doğrulama verisi üzerindeki başarı (Asıl test budur)
+subplot(2,1,2);
+compare(z2f, sys1);
+title('Doğrulama Verisi Uyumu');

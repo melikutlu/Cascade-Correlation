@@ -45,7 +45,7 @@ disp('Veri seti yüklendi. Yapı: 2. Dereceden (Lag=2)');
 %   'GD_MiniBatch'  -> trainOutputLayer_GD.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
 %   'Quickprop_Org' -> trainOutputLayer.m (Quickprop)
 
-config.output_trainer = 'Quickprop_DL'; % <-- DENEME YAPMAK İÇİN SADECE BURAYI DEĞİŞTİRİN
+config.output_trainer = 'GD_MiniBatch'; % <-- DENEME YAPMAK İÇİN SADECE BURAYI DEĞİŞTİRİN
 
 fprintf('*** Seçilen Çıkış Eğitim Yöntemi: %s ***\n', config.output_trainer);
 

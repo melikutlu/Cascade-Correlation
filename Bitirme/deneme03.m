@@ -54,7 +54,7 @@ disp('Veri seti yüklendi. Yapı: 2. Dereceden (Lag=2)');
 %   'GD_MiniBatch'  -> trainOutputLayer_GD.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
 %   'Quickprop_Org' -> trainOutputLayer.m (Quickprop)
 
-config.output_trainer = 'GD_MiniBatch'; % <-- DENEME YAPMAK İÇİN SADECE BURAYI DEĞİŞTİRİN
+config.output_trainer = 'GD_Autograd'; % <-- DENEME YAPMAK İÇİN SADECE BURAYI DEĞİŞTİRİN
 
 fprintf('*** Seçilen Çıkış Eğitim Yöntemi: %s ***\n', config.output_trainer);
 
@@ -295,7 +295,7 @@ function [y_sim, fit_sim] = simulateCCNNModel(u_val, y_real_val, w_o, W_hidden, 
     end
     % Simülasyon çıktısı fiziksel olarak sıfırın altına düşemez.Çünkü
     % yükseklik negatif olamaz.
-    y_sim = max(0, y_sim); 
+    %y_sim = max(0, y_sim); 
     % Fit Hesabı
     % NRMSE Fit formülü
     fit_sim = (1 - (norm(y_real_val - y_sim) / norm(y_real_val - mean(y_real_val)))) * 100;

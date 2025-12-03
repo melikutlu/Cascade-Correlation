@@ -31,14 +31,14 @@ disp('Veri seti yüklendi ve hazırlandı.');
 
 % --- ÇIKIŞ AĞIRLIKLARI İÇİN EĞİTİM YÖNTEMİ SEÇİMİ ---
 % Kullanıcıya farklı seçenekler sunuluyor.
-config.output_trainer = 'GD_Fullbatch';  % 'Quickprop_Org', 'GD_Autograd', 'GD_Fullbatch', 'GD_MiniBatch', 'Quickprop_DL'
+config.output_trainer = 'GD_Autograd';  % 'Quickprop_Org', 'GD_Autograd', 'GD_Fullbatch', 'GD_MiniBatch', 'Quickprop_DL'
 
 fprintf('*** Seçilen Çıkış Eğitim Yöntemi: %s ***\n', config.output_trainer);
 
 eta_output = 0.001;
 eta_output_gd = 0.005;
 mu = 1.75;
-max_epochs_output = 100;
+max_epochs_output = 300;
 min_mse_change = 1e-7;
 epsilon = 1e-8;
 % Gradient Ascent (Aday Katman) Parametreleri

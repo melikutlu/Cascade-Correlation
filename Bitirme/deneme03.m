@@ -48,16 +48,8 @@ disp('Veri setleri ve Regresör Matrisleri hazırlandı. (Lag=2)');
 %   'GD_Fullbatch'  -> trainOutputLayer_GD_fullbatch.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
 %   'GD_MiniBatch'  -> trainOutputLayer_GD.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
 %   'Quickprop_Org' -> trainOutputLayer.m (Quickprop)
-<<<<<<< HEAD
-
-config.output_trainer = 'GD_Autograd'; % <-- DENEME YAPMAK İÇİN SADECE BURAYI DEĞİŞTİRİN
-
-fprintf('*** Seçilen Çıkış Eğitim Yöntemi: %s ***\n', config.output_trainer);
-
-=======
 %% 3. HİPERPARAMETRELER
 config.output_trainer = 'GD_Autograd'; 
->>>>>>> 4ce7d4233d9860c3861e4f4d990c8e32e30a7895
 eta_output = 0.001;
 mu = 0.75;
 max_epochs_output = 300;
@@ -196,15 +188,6 @@ function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, pl
         X_curr = [X_curr, V_h];
         X_cand = [X_cand, V_h];
     end
-<<<<<<< HEAD
-    % Simülasyon çıktısı fiziksel olarak sıfırın altına düşemez.Çünkü
-    % yükseklik negatif olamaz.
-    %y_sim = max(0, y_sim); 
-    % Fit Hesabı
-    % NRMSE Fit formülü
-    fit_sim = (1 - (norm(y_real_val - y_sim) / norm(y_real_val - mean(y_real_val)))) * 100;
-end
-=======
     
     Y_final = X_curr * w_final;
     fit_final = (1 - (sum((T_val - Y_final).^2) / sum((T_val - mean(T_val)).^2))) * 100;
@@ -248,7 +231,3 @@ function [y_sim, fit_sim] = simulateCCNNModel(u_val, y_real, w_o, W_hidden, g_fu
     % Normalize veride "max(0, ...)" kullanılmaz çünkü negatif değerler olabilir.
     fit_sim = (1 - (norm(y_real - y_sim) / norm(y_real - mean(y_real)))) * 100;
 end
-
-
-
->>>>>>> 4ce7d4233d9860c3861e4f4d990c8e32e30a7895

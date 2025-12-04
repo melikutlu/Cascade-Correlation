@@ -199,3 +199,109 @@ function [y_sim, fit_sim] = simulateCCNNModel(u_val, y_real, w_o, W_hidden, g_fu
     fit_sim = (1 - (norm(y_real - y_sim) / norm(y_real - mean(y_real)))) * 100;
 end
 
+%% 6. MLP (MULTI-LAYER PERCEPTRON) İLE KIYASLAMA
+fprintf('\n--- MLP (Klasik YSA) Eğitimi Başlıyor ---\n');
+
+% 1. Veriyi Hazırla (MATLAB Toolbox sütun bazlı çalışır, Transpoze alıyoruz)
+% X_train_bias'ın ilk sütunu (1'ler) bias'tır. Toolbox kendi biasını ekler,
+% bu yüzden ilk sütunu siliyoruz: X(:, 2:end)
+input_train = X_train_bias(:, 2:end)'; 
+target_train = T_train';
+
+% 2. MLP Ağını Oluştur
+hidden_layer_size = 10; % CCNN kaç nöron bulduysa ona yakın seçebilirsin
+net_mlp = fitnet(hidden_layer_size, 'trainlm'); % Levenberg-Marquardt (Hızlıdır)
+
+% Eğitim ayarlarını sessize al (konsolu doldurmasın)
+net_mlp.trainParam.showWindow = false; 
+net_mlp.trainParam.epochs = 100;
+
+% 3. Eğit
+net_mlp = train(net_mlp, input_train, target_train);
+
+% 4. MLP ile Simülasyon (Free Run - Recursive)
+% CCNN simülasyonu ile aynı mantıkta, kendi ürettiğini girdiye vererek test ediyoruz.
+fprintf('MLP Simülasyonu (Free Run) yapılıyor...\n');
+[y_sim_mlp_norm, fit_mlp_norm] = simulateMLPRecursive(u_val_norm, y_val_norm, net_mlp);
+
+% 5. Geri Normalizasyon (Gerçek Birimler)
+y_sim_mlp_real = denormalizeData(y_sim_mlp_norm, config.norm_method, norm_stats.y);
+
+% 6. Gerçek Fit Değeri Hesapla
+fit_mlp_real = (1 - (norm(y_val_real - y_sim_mlp_real) / norm(y_val_real - mean(y_val_real)))) * 100;
+
+fprintf('MLP Sonucu -> Normalize Fit: %.2f%% | Gerçek Fit: %.2f%%\n', fit_mlp_norm, fit_mlp_real);
+
+%% 7. KIYASLAMA GRAFİĞİ (CCNN vs MLP)
+figure('Name', 'CCNN vs MLP Kıyaslaması', 'Color', 'w');
+plot(y_val_real, 'k', 'LineWidth', 1.5, 'DisplayName', 'Gerçek Veri'); hold on;
+plot(y_simulation_real, 'r--', 'LineWidth', 1.2, 'DisplayName', ['CCNN (Fit: ' num2str(fit_simulation_real,'%.2f') '%)']);
+plot(y_sim_mlp_real, 'b-.', 'LineWidth', 1.2, 'DisplayName', ['MLP (Fit: ' num2str(fit_mlp_real,'%.2f') '%)']);
+title('Model Kıyaslaması: CCNN vs MLP');
+ylabel('Su Seviyesi'); xlabel('Zaman');
+legend('show'); grid on;
+
+% --- MLP İÇİN YARDIMCI SİMÜLASYON FONKSİYONU ---
+function [y_sim, fit] = simulateMLPRecursive(u_val, y_real, net)
+    N = length(u_val);
+    y_sim = zeros(N, 1);
+    y_sim(1:2) = y_real(1:2); % Başlangıç şartı
+    
+    for k = 3:N
+        % Giriş vektörü: [u(k-1); u(k-2); y_sim(k-1); y_sim(k-2)]
+        % DİKKAT: Bias yok, çünkü 'net' nesnesi kendi biasını ekler.
+        input_vec = [u_val(k-1); u_val(k-2); y_sim(k-1); y_sim(k-2)];
+        
+        % Tahmin (Tek adım)
+        y_sim(k) = net(input_vec);
+    end
+    
+    fit = (1 - (norm(y_real - y_sim) / norm(y_real - mean(y_real)))) * 100;
+end
+
+%% 9. MLP ONE-STEP PREDICTION EĞİTİMİ VE SONUÇLARI
+fprintf('\n--- MLP One-Step Prediction Analizi ---\n');
+
+% 1. Eğitim Verisini Hazırla (Transpoze alıyoruz: D x N formatı)
+% Input: u(k-1), u(k-2), y(k-1), y(k-2) -> Hepsi GERÇEK veri
+input_train = X_train_bias(:, 2:end)'; 
+target_train = T_train';
+
+% 2. Validasyon Verisini Hazırla
+input_val = X_val_bias(:, 2:end)';
+target_val = T_val'; % Bu y_val_norm'un aynısıdır (Lag sebebiyle kesilmiş)
+
+% 3. MLP Ağını Oluştur ve Eğit
+hidden_size = 1;
+net_mlp = fitnet(hidden_size, 'trainlm');
+net_mlp.trainParam.showWindow = false; % Pencere açılmasın
+net_mlp.trainParam.epochs = 50;
+
+% EĞİTİM (Burada One-Step mantığı kullanılır)
+net_mlp = train(net_mlp, input_train, target_train);
+
+% 4. SONUÇLARI GÖRME (One-Step Prediction)
+% Recursive döngü YOK. Direkt matris çarpımı gibi tahmin alıyoruz.
+y_pred_mlp_train_norm = net_mlp(input_train)';
+y_pred_mlp_val_norm   = net_mlp(input_val)';
+
+% 5. Geri Normalizasyon
+y_pred_mlp_val_real = denormalizeData(y_pred_mlp_val_norm, config.norm_method, norm_stats.y);
+
+% Hedef veriyi de hizalayalım (Lag=2 kesmesi)
+offset = 2;
+y_val_real_aligned = z2f.y(offset+1:end);
+
+% 6. Fit Hesapla (One-Step)
+fit_mlp_onestep = (1 - (norm(y_val_real_aligned - y_pred_mlp_val_real) / norm(y_val_real_aligned - mean(y_val_real_aligned)))) * 100;
+
+fprintf('MLP One-Step Prediction Fit: %% %.4f (Çok yüksek çıkmalı)\n', fit_mlp_onestep);
+
+% 7. GRAFİK
+figure('Name', 'MLP One-Step Prediction Result', 'Color', 'w');
+plot(y_val_real_aligned, 'k', 'LineWidth', 1.5); hold on;
+plot(y_pred_mlp_val_real, 'b-.', 'LineWidth', 1.2);
+title(['MLP One-Step Prediction (Fit: ' num2str(fit_mlp_onestep, '%.2f') '%)']);
+legend('Gerçek Veri', 'MLP Tahmini');
+xlabel('Zaman'); ylabel('Su Seviyesi');
+grid on;

@@ -29,8 +29,8 @@ config.norm_method = 'ZScore';
 
 % ==== REGRESÖR AYARLARI (NARX STYLE) ====
 config.regressors.type = 'narx';     % 'narx' veya 'custom'
-config.regressors.na = 2;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
-config.regressors.nb = 2;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
+config.regressors.na = 1;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
+config.regressors.nb = 1;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
 config.regressors.nk = 0;            % Giriş gecikmesi (delay)
 config.regressors.include_bias = false;
 
@@ -48,16 +48,16 @@ config.model.target_mse = 0.00005;
 config.model.output_trainer = 'GD_Autograd';
 config.model.eta_output = 0.001;
 config.model.mu = 0.75;
-config.model.max_epochs_output = 100;
+config.model.max_epochs_output = 300;
 config.model.min_mse_change = 1e-9;
 config.model.epsilon = 1e-8;
-config.model.eta_candidate = 0.0005;
-config.model.max_epochs_candidate = 50;
-config.model.eta_output_gd = 0.0002;
+config.model.eta_candidate = 0.002;
+config.model.max_epochs_candidate = 300;
+config.model.eta_output_gd = 0.002;
 config.model.batch_size = 32;
 
 % Aktivasyon fonksiyonu
-config.model.activation = 'sigmoid';  % 'tanh', 'sigmoid', 'relu'
+config.model.activation = 'tanh';  % 'tanh', 'sigmoid', 'relu'
 
 % ==== GÖRSELLEŞTİRME AYARLARI ====
 config.plotting.enabled = true;
@@ -195,7 +195,7 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     % Durma Kontrolü
     mse_history(num_hidden_units + 1) = current_mse;
     
-    if (mse_history(end-1) - current_mse) < 1e-2
+    if (mse_history(end-1) - current_mse) < 1e-5
         fprintf('*** İyileşme yetersiz. Döngü sonlandırılıyor. ***\n');
         break;
     end
@@ -212,12 +212,12 @@ fprintf('\n=== PERFORMANS ANALİZLERİ ===\n');
 if config.plotting.enabled
     % --- A) EĞİTİM PERFORMANSI ---
     plotPerformanceSimple(T_train, Y_pred_stage1, X_output_input, ...
-        w_o_trained, 'EĞİTİM Verisi Performansı (Normalize)', config);
+        w_o_trained, 'EĞİTİM Verisi Performansı (Normalize)', config,num_hidden_units);
     
     % --- B) DOĞRULAMA PERFORMANSI ---
     evaluateModelOptimized(X_val_bias, T_val, w_o_stage1_trained, ...
         w_o_trained, W_hidden, g, ...
-        'DOĞRULAMA Verisi (One-Step Prediction - Normalize)', config);
+        'DOĞRULAMA Verisi (One-Step Prediction - Normalize)', config,num_hidden_units);
 end
 
 %% 7. SİMÜLASYON MODU (Free Run)
@@ -298,8 +298,8 @@ end
 function [U_train, Y_train, U_val, Y_val] = loadTwotankData(config)
     % Twotankdata için özel yükleyici
     
-    load twotankdata;
-    z_full = iddata(y, u, config.data.twotank.sampling_time);
+    load dryer2;
+    z_full = iddata(y2, u2, config.data.twotank.sampling_time);
     
     % Veriyi böl
     N_total = length(z_full.y);
@@ -309,8 +309,7 @@ function [U_train, Y_train, U_val, Y_val] = loadTwotankData(config)
     % Eğitim verisi
     if config.data.train_ratio > 0
         z1 = z_full(1:train_end);
-        z1f = idfilt(z1, 3, config.data.twotank.filter_cutoff);
-        z1f = z1f(config.data.twotank.warmup_samples:end);
+        z1f = detrend(z1);
         U_train = z1f.u;
         Y_train = z1f.y;
     else
@@ -321,8 +320,7 @@ function [U_train, Y_train, U_val, Y_val] = loadTwotankData(config)
     % Doğrulama verisi
     if config.data.val_ratio > 0
         z2 = z_full(train_end+1:val_end);
-        z2f = idfilt(z2, 3, config.data.twotank.filter_cutoff);
-        z2f = z2f(config.data.twotank.warmup_samples:end);
+        z2f = detrend(z2);
         U_val = z2f.u;
         Y_val = z2f.y;
     else
@@ -601,7 +599,7 @@ function [y_sim, fit_sim] = simulateCCNNModel(U_val, Y_val, w_o, W_hidden, g_fun
     end
 end
 
-function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, plot_title, config)
+function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, plot_title, config,num_hidden_units)
     % Model değerlendirme fonksiyonu
     
     num_hidden = length(W_hidden);
@@ -629,7 +627,7 @@ function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, pl
         figure('Name', plot_title, 'Color', 'w');
         plot(T_val, 'k', 'LineWidth', 1.5); hold on;
         plot(Y_stage1, 'r--', 'DisplayName', sprintf('Gizli Katman Yok - Fit: %.2f%%', fit_stage1));
-        plot(Y_final, 'b-', 'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden, fit_final));
+        plot(Y_final, 'b-', 'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden_units, fit_final));
         legend('show', 'Location', 'best');
         title(sprintf('%s (Fit: %.2f%%)', plot_title, fit_final));
         xlabel('Zaman Örneği');
@@ -638,7 +636,7 @@ function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, pl
     end
 end
 
-function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, config)
+function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, config,num_hidden_units)
     % Performans grafiği
     
     Y_final = X_final_input * w_final;
@@ -654,7 +652,7 @@ function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, c
         plot(Y_stage1, 'r--', 'LineWidth', 1.2, ...
             'DisplayName', sprintf('Gizli Katman Yok - Fit: %.2f%%', fit_stage1));
         plot(Y_final, 'b-', 'LineWidth', 1.2, ...
-            'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden_calc, fit_final));
+            'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden_units, fit_final));
         legend('show', 'Location', 'best');
         title(sprintf('%s (Fit: %.2f%%)', title_txt, fit_final));
         xlabel('Zaman Örneği');

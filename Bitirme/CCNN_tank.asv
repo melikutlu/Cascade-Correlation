@@ -32,7 +32,7 @@ config.regressors.type = 'narx';     % 'narx' veya 'custom'
 config.regressors.na = 2;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
 config.regressors.nb = 2;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
 config.regressors.nk = 0;            % Giriş gecikmesi (delay)
-config.regressors.include_bias = true;
+config.regressors.include_bias = false;
 
 % ==== ÖZEL GECİKMELER İÇİN (type='custom' ise) ====
 % config.regressors.input_lags = [1, 2, 3];
@@ -46,18 +46,18 @@ config.model.num_outputs = 1;     % Çıkış değişkeni sayısı (y boyutu)
 config.model.max_hidden_units = 100;
 config.model.target_mse = 0.00005;
 config.model.output_trainer = 'GD_Autograd';
-config.model.eta_output = 0.001;
+config.model.eta_output = 0.000000001;
 config.model.mu = 0.75;
-config.model.max_epochs_output = 300;
+config.model.max_epochs_output = 5;
 config.model.min_mse_change = 1e-9;
 config.model.epsilon = 1e-8;
 config.model.eta_candidate = 0.005;
-config.model.max_epochs_candidate = 100;
+config.model.max_epochs_candidate = 5;
 config.model.eta_output_gd = 0.002;
 config.model.batch_size = 32;
 
 % Aktivasyon fonksiyonu
-config.model.activation = 'tanh';  % 'tanh', 'sigmoid', 'relu'
+config.model.activation = 'sigmoid';  % 'tanh', 'sigmoid', 'relu'
 
 % ==== GÖRSELLEŞTİRME AYARLARI ====
 config.plotting.enabled = true;
@@ -195,7 +195,7 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     % Durma Kontrolü
     mse_history(num_hidden_units + 1) = current_mse;
     
-    if (mse_history(end-1) - current_mse) < 1e-2 && num_hidden_units > 1
+    if (mse_history(end-1) - current_mse) < 1e-2
         fprintf('*** İyileşme yetersiz. Döngü sonlandırılıyor. ***\n');
         break;
     end

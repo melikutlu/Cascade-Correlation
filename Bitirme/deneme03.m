@@ -1,4 +1,4 @@
-% Kaskad Korelasyon (CCNN) - OPTİMİZE EDİLMİŞ VERSİYON
+% Kaskad Korelasyon (CCNN) - NORMALİZE EDİLMİŞ FULL VERSİYON
 clear; clc; close all; rng(0);
 
 %% 1. VERİ SETİNİ YÜKLEME, FİLTRELEME VE MATRİS HAZIRLIĞI
@@ -9,39 +9,60 @@ z_full = iddata(y, u, 0.2, 'Name', 'Two-tank system');
 z1 = z_full(1:1500);
 z1f = idfilt(z1, 3, 0.066902); % Filtreleme
 z1f = z1f(20:end);             % Warm-up atma
-% Regresör Matrisini Oluştur (Fonksiyon aşağıda tanımlı)
-[X_train_bias, T_train] = prepareRegressors(z1f.u, z1f.y);
-[N_train, num_inputs] = size(X_train_bias);
-num_outputs = 1;
 
 % --- B) DOĞRULAMA (VALIDATION) VERİSİ HAZIRLIĞI ---
 z2 = z_full(1501:3000);
 z2f = idfilt(z2, 3, 0.066902); % Aynı filtre
 z2f = z2f(20:end);             % Warm-up atma
-% Regresör Matrisini Oluştur (Fonksiyon aşağıda tanımlı)
-% DİKKAT: Artık fonksiyon içinde tekrar hesaplamayacağız, buradan göndereceğiz.
-[X_val_bias, T_val] = prepareRegressors(z2f.u, z2f.y);
 
+%% --- [YENİ] 2. NORMALİZASYON (STANDARTLAŞTIRMA) ---
+fprintf('Normalizasyon işlemi yapılıyor...\n');
+
+% 1. İstatistikleri SADECE EĞİTİM verisinden hesapla
+mu_u = mean(z1f.u);  std_u = std(z1f.u);
+mu_y = mean(z1f.y);  std_y = std(z1f.y);
+
+% 2. Eğitim verisini normalize et: (Data - Mean) / Std
+u_train_norm = (z1f.u - mu_u) / std_u;
+y_train_norm = (z1f.y - mu_y) / std_y;
+
+% 3. Doğrulama verisini normalize et (Eğitim parametrelerini kullanarak!)
+u_val_norm = (z2f.u - mu_u) / std_u;
+y_val_norm = (z2f.y - mu_y) / std_y;
+
+fprintf('Mean U: %.4f, Std U: %.4f | Mean Y: %.4f, Std Y: %.4f\n', mu_u, std_u, mu_y, std_y);
+
+% --- Regresör Matrislerini NORMALIZE Veri ile Oluştur ---
+[X_train_bias, T_train] = prepareRegressors(u_train_norm, y_train_norm);
+[X_val_bias, T_val]     = prepareRegressors(u_val_norm, y_val_norm);
+
+[N_train, num_inputs] = size(X_train_bias);
+num_outputs = 1;
 disp('Veri setleri ve Regresör Matrisleri hazırlandı. (Lag=2)');
 
-%% 2. HİPERPARAMETRELER
-config.output_trainer = 'GD_MiniBatch'; 
+
+% --- ÇIKIŞ AĞIRLIKLARI İÇİN EĞİTİM YÖNTEMİ SEÇİMİ ---
+% Seçenekler:
+%   'Quickprop_DL'  -> trainOutputLayer_Quickprop_With_dlgrad.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
+%   'GD_Autograd'   -> trainOutputLayer_GD_Autograd.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)
+%   'GD_Fullbatch'  -> trainOutputLayer_GD_fullbatch.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
+%   'GD_MiniBatch'  -> trainOutputLayer_GD.m (Gradyan descenti kendi yazdığımız kod ile kullanır.)
+%   'Quickprop_Org' -> trainOutputLayer.m (Quickprop)
+%% 3. HİPERPARAMETRELER
+config.output_trainer = 'GD_Autograd'; 
 eta_output = 0.001;
-mu = 1.75;
+mu = 0.75;
 max_epochs_output = 300;
-min_mse_change = 1e-7;
+min_mse_change = 1e-9;
 epsilon = 1e-8;
-
-eta_candidate = 0.00005;
+eta_candidate = 0.005; % Normalize veride biraz artırılabilir
 max_epochs_candidate = 100;
-
 g = @(a) tanh(a);
 g_prime = @(v) 1 - v.^2;
-
 target_mse = 0.00005;
 max_hidden_units = 100; 
 num_hidden_units = 0; 
-eta_output_gd = 0.005; 
+eta_output_gd = 0.002; 
 batch_size = 32;
 mse_history = [];
 
@@ -94,12 +115,14 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     [w_o_trained, E_residual, current_mse] = runOutputTraining(...
         config.output_trainer, X_output_input, T_train, w_o_initial_new, ...
         max_epochs_output, all_params);
-
+    
     current_fit = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
     
     % Durma Kontrolü
     mse_history(num_hidden_units + 1) = current_mse;
-    if (mse_history(end-1) - current_mse) < 1e-6 && num_hidden_units > 1
+    
+    
+    if (mse_history(end-1) - current_mse) < 1e-2 && num_hidden_units > 1
         fprintf('*** İyileşme yetersiz. Döngü sonlandırılıyor. ***\n');
         break; 
     end
@@ -107,53 +130,49 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     fprintf('Gizli Birim #%d | MSE: %f | Fit: %.2f%%\n', num_hidden_units, current_mse, current_fit);
 end
 
-%% 3. VE 4. ADIM: PERFORMANS ANALİZLERİ (Optimize Edildi)
-
+%% 3. VE 4. ADIM: PERFORMANS ANALİZLERİ
+% Not: Buradaki grafikler normalize değerler üzerinden olacaktır.
 % --- A) EĞİTİM PERFORMANSI ---
-% X_output_input zaten son halini (tüm nöronlarla) almış durumda. Tekrar hesaplamaya gerek yok.
 plotPerformanceSimple(T_train, Y_pred_stage1, X_output_input, w_o_trained, ...
-    'EĞİTİM Verisi Performansı');
+    'EĞİTİM Verisi Performansı (Normalize)');
 
 % --- B) DOĞRULAMA (VALIDATION) PERFORMANSI ---
-% DİKKAT: Burada optimize ettiğimiz fonksiyonu kullanıyoruz.
-% X_val_bias ve T_val'i zaten en başta hesaplamıştık. Tekrar hesaplamıyoruz.
 evaluateModelOptimized(X_val_bias, T_val, w_o_stage1_trained, w_o_trained, W_hidden, g, ...
-    'DOĞRULAMA Verisi (One-Step Prediction)');
+    'DOĞRULAMA Verisi (One-Step Prediction - Normalize)');
 
-%% 5. ADIM: SİMÜLASYON MODU (Free Run)
-% Simülasyon recursive olduğu için (kendi çıktısını beslediği için)
-% burada matris kullanamayız, döngü içinde hesaplamalıyız.
-% Ancak temizlenmiş u_val ve y_val verilerini kullanıyoruz.
+%% 5. ADIM: SİMÜLASYON MODU (Free Run) ve GERİ NORMALİZASYON
 fprintf('\n--- Simülasyon (Free Run) Modu ---\n');
-[y_simulation, fit_simulation] = simulateCCNNModel(z2f.u, z2f.y, w_o_trained, W_hidden, g);
 
-% Simülasyon Grafiği
-figure('Name', 'Simulation Result', 'Color', 'w');
-plot(z2f.y, 'k', 'LineWidth', 1.5); hold on;
-plot(y_simulation, 'r--', 'LineWidth', 1.2);
-title(['Simülasyon (Free Run) - Fit: %' num2str(fit_simulation, '%.2f')]);
-legend('Gerçek', 'Simülasyon'); grid on;
+% Simülasyona NORMALIZE verileri gönderiyoruz
+[y_simulation_norm, ~] = simulateCCNNModel(u_val_norm, y_val_norm, w_o_trained, W_hidden, g);
 
+% --- [YENİ] GERİ NORMALİZASYON (DENORMALIZATION) ---
+% Normalize sonuçları gerçek birimlere (cm/volt vs) çeviriyoruz.
+% Formül: y_real = y_norm * std + mean
+y_simulation_real = (y_simulation_norm * std_y) + mu_y;
+y_val_real = z2f.y; % Gerçek verinin orijinali
 
-%% --- OPTİMİZE EDİLMİŞ YARDIMCI FONKSİYONLAR ---
+% Fit değerini gerçek veriler üzerinden hesaplıyoruz
+fit_simulation_real = (1 - (norm(y_val_real - y_simulation_real) / norm(y_val_real - mean(y_val_real)))) * 100;
+
+% Simülasyon Grafiği (Gerçek Birimler)
+figure('Name', 'Simulation Result (Real World Units)', 'Color', 'w');
+plot(y_val_real, 'k', 'LineWidth', 1.5); hold on;
+plot(y_simulation_real, 'r--', 'LineWidth', 1.2);
+title(['Simülasyon (Gerçek Birimler) - Fit: ' num2str(fit_simulation_real, '%.2f') '%']);
+legend('Gerçek Veri', 'Simülasyon'); 
+ylabel('Output (Real)'); grid on;
+
+%% --- YARDIMCI FONKSİYONLAR ---
 
 function [X_bias, T] = prepareRegressors(u, y)
-    % prepareRegressors: Verilen u ve y vektörlerinden Lag=2 yapısına göre
-    % regresör matrisi oluşturur.
-    % Çıktı: Bias eklenmiş X matrisi ve Hedef T vektörü.
-    
     L = length(u);
-    % Girişler: u(k-1), u(k-2), y(k-1), y(k-2)
     X = [u(2:L-1), u(1:L-2), y(2:L-1), y(1:L-2)];
-    % Hedef: y(k) (3. adımdan itibaren)
     T = y(3:L);
-    % Bias Ekleme
     X_bias = [ones(size(X, 1), 1), X];
 end
 
 function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, plot_title)
-    % Bu fonksiyon artık veri işleme YAPMAZ. Sadece hesaplar ve çizer.
-    
     fprintf('\n--- [%s] Değerlendiriliyor ---\n', plot_title);
     num_hidden = length(W_hidden);
     
@@ -162,14 +181,10 @@ function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, pl
     fit_stage1 = (1 - (sum((T_val - Y_stage1).^2) / sum((T_val - mean(T_val)).^2))) * 100;
     
     % 2. Aşama 2 (Tam Model) Tahmin
-    % Validation verisi için de nöron çıktılarını hesaplamamız lazım
     X_curr = X_val;
     X_cand = X_val;
-    
     for k = 1:num_hidden
-        % Bu nöronun (W_hidden{k}) validation verisine tepkisini ölç
         V_h = g(X_cand * W_hidden{k});
-        % Matrislere ekle
         X_curr = [X_curr, V_h];
         X_cand = [X_cand, V_h];
     end
@@ -179,48 +194,43 @@ function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, pl
     
     fprintf('Sonuç -> Başlangıç Fit: %.2f%% | Final Fit: %.2f%%\n', fit_stage1, fit_final);
     
-    % Grafik
     figure('Name', plot_title, 'Color', 'w');
     plot(T_val, 'k', 'LineWidth', 1.5); hold on;
-    plot(Y_stage1, 'r:', 'LineWidth', 1);
-    plot(Y_final, 'b-', 'LineWidth', 1.2);
-    legend('Gerçek', 'Başlangıç (Linear)', 'Final (CCNN)');
-    title([plot_title ' (Fit: ' num2str(fit_final, '%.2f') '%)']);
-    grid on;
+    plot(Y_stage1, 'r--', 'DisplayName', sprintf('Tahmin (Gizli Katman Yok - Fit: %.2f%%)', fit_stage1));
+    plot(Y_final, 'b-', 'DisplayName', sprintf('Tahmin (%d Gizli Katmanlı - Fit: %.2f%%)', num_hidden, fit_final));
+    legend('show'); title([plot_title ' (Fit: ' num2str(fit_final, '%.2f') '%)']); grid on;
 end
 
 function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt)
-    % Eğitim performansını çizmek için basit fonksiyon
     Y_final = X_final_input * w_final;
-    fit = (1 - (sum((T - Y_final).^2) / sum((T - mean(T)).^2))) * 100;
+    fit_final = (1 - (sum((T - Y_final).^2) / sum((T - mean(T)).^2))) * 100;
+    fit_stage1 = (1 - (sum((T - Y_stage1).^2) / sum((T - mean(T)).^2))) * 100;
+    num_hidden_calc = size(X_final_input, 2) - 5; 
     
     figure('Name', title_txt, 'Color', 'w');
     plot(T, 'k'); hold on;
-    plot(Y_stage1, 'r:');
-    plot(Y_final, 'b');
-    title([title_txt ' (Fit: ' num2str(fit, '%.2f') '%)']);
-    legend('Gerçek', 'Başlangıç', 'Final'); grid on;
+    plot(Y_stage1, 'r--', 'DisplayName', sprintf('Tahmin (Gizli Katman Yok - Fit: %.2f%%)', fit_stage1));
+    plot(Y_final, 'b-', 'DisplayName', sprintf('Tahmin (%d Gizli Katmanlı - Fit: %.2f%%)', num_hidden_calc, fit_final));
+    title([title_txt ' (Fit: ' num2str(fit_final, '%.2f') '%)']); legend('show'); grid on;
 end
 
 function [y_sim, fit_sim] = simulateCCNNModel(u_val, y_real, w_o, W_hidden, g_func)
-    % Simülasyon mecburen döngü ile yapılmak zorundadır (Recursive)
     N = length(u_val);
     y_sim = zeros(N, 1);
-    y_sim(1:2) = y_real(1:2); % Başlangıç şartı
-    
+    y_sim(1:2) = y_real(1:2); 
     num_hidden = length(W_hidden);
     
     for k = 3:N
-        % Regresörler (Lag=2)
         curr_in = [1, u_val(k-1), u_val(k-2), y_sim(k-1), y_sim(k-2)];
-        
-        % Nöronlar
         for h = 1:num_hidden
             v = g_func(curr_in * W_hidden{h});
             curr_in = [curr_in, v];
         end
         y_sim(k) = curr_in * w_o;
     end
-    y_sim = max(0, y_sim);
+    % Normalize veride "max(0, ...)" kullanılmaz çünkü negatif değerler olabilir.
     fit_sim = (1 - (norm(y_real - y_sim) / norm(y_real - mean(y_real)))) * 100;
 end
+
+
+

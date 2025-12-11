@@ -45,19 +45,19 @@ config.model.num_outputs = 1;     % Çıkış değişkeni sayısı (y boyutu)
 % ==== MODEL HİPERPARAMETRELERİ ====
 config.model.max_hidden_units = 0;
 config.model.target_mse = 0.00005;
-config.model.output_trainer = 'GD_Fullbatch';
-config.model.eta_output = 0.001;
+config.model.output_trainer = 'GD_Autograd_1';
+config.model.eta_output = 0.005;
 config.model.mu = 0.75;
 config.model.max_epochs_output = 100;
 config.model.min_mse_change = 1e-9;
 config.model.epsilon = 1e-8;
-config.model.eta_candidate = 0.0005;
+config.model.eta_candidate = 0.001;
 config.model.max_epochs_candidate = 50;
-config.model.eta_output_gd = 0.0002;
+config.model.eta_output_gd = 0.05;
 config.model.batch_size = 32;
 
 % Aktivasyon fonksiyonu
-config.model.activation = 'sigmoid';  % 'tanh', 'sigmoid', 'relu'
+config.model.activation = 'tanh';  % 'tanh', 'sigmoid', 'relu'
 
 % ==== GÖRSELLEŞTİRME AYARLARI ====
 config.plotting.enabled = true;
@@ -452,7 +452,9 @@ function [U_train, Y_train, U_val, Y_val] = loadFromWorkspace(config)
 end
 
 function [X_bias, T, reg_info] = createRegressorsDynamic(U, Y, config)
-    % Dinamik regresör matrisi oluşturur (NARX veya custom)
+    % Dinamik regresör matrisi oluşturur
+    % İstek: u(k) ve y(k-1) verildiğinde T(k) = y(k) olmalı.
+    % Yani Target, regresördeki y değerinin "bir sonraki" değeri olmalıdır.
     
     N = size(U, 1);
     num_inputs = config.model.num_inputs;
@@ -460,39 +462,51 @@ function [X_bias, T, reg_info] = createRegressorsDynamic(U, Y, config)
     
     % 1. Gecikmeleri belirle
     if strcmpi(config.regressors.type, 'narx')
-        % NARX tarzı gecikmeler
+        % NARX:
+        % nk=0 -> u(k)'yı dahil et
+        % na=1 -> y(k-1)'i dahil et
         na = config.regressors.na;
         nb = config.regressors.nb;
         nk = config.regressors.nk;
         
-        input_lags = nk:(nk+nb-1);
-        output_lags = 1:na;
+        input_lags = nk:(nk+nb-1); % nk=0, nb=1 => [0]
+        output_lags = 1:na;        % na=1 => [1]
         
     elseif strcmpi(config.regressors.type, 'custom')
-        % Özel gecikmeler
         input_lags = config.regressors.input_lags;
         output_lags = config.regressors.output_lags;
-        
     else
-        error('Bilinmeyen regresör tipi: %s', config.regressors.type);
+        error('Bilinmeyen regresör tipi.');
     end
     
-    % 2. En büyük gecikme
+    % 2. Maksimum gecikmeyi bul (Verinin nereden başlayacağını belirler)
     max_lag = max([input_lags, output_lags]);
     
-    % 3. Regresör matrisini oluştur
+    % Eğer output_lags boşsa (sadece giriş varsa) max_lag en az 1 olmalı ki T geleceği göstersin
+    if isempty(output_lags) && max_lag == 0
+         % Sadece u(k) var ama y(k) tahmin edilecek, sorun yok.
+    end
+
+    % 3. Başlangıç İndeksi
+    % Örnek: max_lag=1 (y(k-1) kullanılıyor).
+    % O zaman ilk tahmin edilebilir nokta k=2'dir.
+    % Regresör: y(1), Target: y(2).
     start_idx = max_lag + 1;
+    
+    % X (Girdi) ve T (Hedef) matrislerini oluştur
     X = [];
     
-    % 3.1 Giriş gecikmeleri
+    % 3.1 Giriş Gecikmeleri (u)
     for input_idx = 1:num_inputs
         for lag = input_lags
+            % u(k - lag)
             col_data = U(start_idx-lag:end-lag, input_idx);
             X = [X, col_data];
         end
     end
     
-    % 3.2 Çıkış gecikmeleri
+    % 3.2 Çıkış Gecikmeleri (y)
+    % Burada y(k - lag) alıyoruz. lag=1 ise y(k-1).
     for output_idx = 1:num_outputs
         for lag = output_lags
             col_data = Y(start_idx-lag:end-lag, output_idx);
@@ -500,29 +514,57 @@ function [X_bias, T, reg_info] = createRegressorsDynamic(U, Y, config)
         end
     end
     
-    % 4. Bias ekle
+    % 4. Target Matrisi (T)
+    % İSTEĞİNİZE GÖRE DÜZELTME:
+    % Target her zaman "şu anki zaman adımı" (k) veya 
+    % regresördeki "k-1"in bir sonrası olmalıdır.
+    % start_idx = k (şu anki zaman).
+    T = Y(start_idx:end, :);
+    
+    % 5. Bias ekle
     if config.regressors.include_bias
         X_bias = [ones(size(X,1), 1), X];
     else
         X_bias = X;
     end
     
-    % 5. Hedef matrisi (ileri bir adım)
-    T = Y(start_idx:end, :);
-    
     % 6. Bilgileri kaydet
     reg_info.input_lags = input_lags;
     reg_info.output_lags = output_lags;
     reg_info.max_lag = max_lag;
-    reg_info.num_features = size(X_bias, 2);
-    reg_info.num_samples = size(X_bias, 1);
     
-    % Debug bilgisi
-    fprintf('  Giriş gecikmeleri: %s\n', mat2str(input_lags));
-    fprintf('  Çıkış gecikmeleri: %s\n', mat2str(output_lags));
-    fprintf('  Maksimum gecikme: %d\n', max_lag);
+    % --- DEBUG: KULLANICIYA HİZALAMAYI GÖSTER ---
+    fprintf('\n    --- REGRESÖR HİZALAMA KONTROLÜ ---\n');
+    fprintf('    (İlk satır örneği)\n');
+    
+    % Girişten bir örnek göster (ilk sütun bias, ikinci sütun u)
+    if config.regressors.include_bias
+        u_val_sample = X_bias(1, 2); 
+    else
+        u_val_sample = X_bias(1, 1);
+    end
+    
+    % Regresördeki Y örneğini bul (Son sütun genellikle y(k-1)'dir)
+    y_reg_sample = X_bias(1, end); 
+    
+    % Target örneği
+    t_val_sample = T(1, 1);
+    
+    fprintf('    Regresördeki Giriş u(k):   %.4f\n', u_val_sample);
+    fprintf('    Regresördeki Geçmiş y(k-1): %.4f\n', y_reg_sample);
+    fprintf('    Hedef T (Beklenen y(k)):   %.4f\n', t_val_sample);
+    
+    % Mantık Kontrolü
+    % Regresördeki y, T'den önceki y mi? (Raw veriden kontrol)
+    % T(1) aslında Y(start_idx)
+    % Regresör Y(1) aslında Y(start_idx - 1)
+    if abs(Y(start_idx,1) - t_val_sample) < 1e-10 && abs(Y(start_idx-1,1) - y_reg_sample) < 1e-10
+         fprintf('    >> ONAY: Target, regresördeki Y değerinden tam olarak BİR SONRAKİ değerdir.\n');
+    else
+         fprintf('    >> UYARI: Hizalamada beklenmedik durum!\n');
+    end
+    fprintf('    ----------------------------------\n');
 end
-
 function [y_sim, fit_sim] = simulateCCNNModel(U_val, Y_val, w_o, W_hidden, g_func, config)
     % Free-run simülasyonu
     N = size(U_val, 1);

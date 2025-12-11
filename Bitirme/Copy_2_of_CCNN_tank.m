@@ -30,7 +30,7 @@ config.norm_method = 'ZScore';
 % ==== REGRESÖR AYARLARI (NARX STYLE) ====
 config.regressors.type = 'narx';     % 'narx' veya 'custom'
 config.regressors.na = 1;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
-config.regressors.nb = 0;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
+config.regressors.nb = 1;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
 config.regressors.nk = 0;            % Giriş gecikmesi (delay)
 config.regressors.include_bias = false;
 
@@ -39,7 +39,7 @@ config.regressors.include_bias = false;
 % config.regressors.output_lags = [1, 2, 4, 6];
 
 % ==== GİRİŞ/ÇIKIŞ BOYUTLARI ====
-config.model.num_inputs = 1;      % Giriş değişkeni sayısı (u boyutu)
+config.model.num_inputs = 4;      % Giriş değişkeni sayısı (u boyutu)
 config.model.num_outputs = 1;     % Çıkış değişkeni sayısı (y boyutu)
 
 % ==== MODEL HİPERPARAMETRELERİ ====

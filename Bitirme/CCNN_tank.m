@@ -29,10 +29,10 @@ config.norm_method = 'ZScore';
 
 % ==== REGRESÖR AYARLARI (NARX STYLE) ====
 config.regressors.type = 'narx';     % 'narx' veya 'custom'
-config.regressors.na = 2;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
-config.regressors.nb = 2;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
+config.regressors.na = 1;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
+config.regressors.nb = 1;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
 config.regressors.nk = 0;            % Giriş gecikmesi (delay)
-config.regressors.include_bias = false;
+config.regressors.include_bias = true;
 
 % ==== ÖZEL GECİKMELER İÇİN (type='custom' ise) ====
 % config.regressors.input_lags = [1, 2, 3];
@@ -43,9 +43,9 @@ config.model.num_inputs = 1;      % Giriş değişkeni sayısı (u boyutu)
 config.model.num_outputs = 1;     % Çıkış değişkeni sayısı (y boyutu)
 
 % ==== MODEL HİPERPARAMETRELERİ ====
-config.model.max_hidden_units = 100;
+config.model.max_hidden_units = 0;
 config.model.target_mse = 0.00005;
-config.model.output_trainer = 'GD_Autograd';
+config.model.output_trainer = 'GD_Fullbatch';
 config.model.eta_output = 0.001;
 config.model.mu = 0.75;
 config.model.max_epochs_output = 100;

@@ -257,6 +257,28 @@ if config.plotting.show_simulation
     end
 end
 
+%% N-STEP PREDICTION TEST
+n_test = 10; % Denemek istediğiniz adım sayısı
+[y_10_step_norm, fit_10] = predictNStepCCNN(U_val_norm, Y_val_norm, ...
+    w_o_trained, W_hidden, g, config, n_test);
+
+fprintf('n=%d Adımlı Tahmin Fit Değeri: %.2f%%\n', n_test, fit_10);
+
+% Geri normalizasyon (Gerçek birimler için)
+y_10_real = denormalizeData(y_10_step_norm, config.norm_method, norm_stats.y);
+y_val_real_short = Y_val_raw(reg_info.max_lag+1:end, :);
+
+% Grafik (Hata veren satır düzeltildi)
+figure('Name', sprintf('%d-Step Prediction', n_test), 'Color', 'w');
+plot(y_val_real_short, 'k', 'LineWidth', 1.5, 'DisplayName', 'Gerçek Veri'); 
+hold on;
+plot(y_10_real, 'b--', 'LineWidth', 1.2, 'DisplayName', sprintf('%d-Step Tahmin', n_test));
+title(sprintf('%d-Step Ahead Prediction (Fit: %.2f%%)', n_test, fit_10));
+legend('show');
+xlabel('Zaman Örneği');
+ylabel('Çıkış (Gerçek Değerler)');
+grid on;
+
 %% 8. ÖZET
 fprintf('\n=== ÖZET ===\n');
 fprintf('Veri Kaynağı: %s\n', config.data.source);
@@ -704,3 +726,71 @@ function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, c
         grid on;
     end
 end
+
+function [y_n_step, fit_n_step] = predictNStepCCNN(U_val, Y_val, w_o, W_hidden, g_func, config, n_steps)
+    % n_steps: Kaç adım ötesini tahmin edeceği (Ör: 5, 10, 50)
+    
+    N = size(U_val, 1);
+    num_outputs = config.model.num_outputs;
+    num_inputs = config.model.num_inputs;
+    
+    % Regresör ayarları
+    if strcmpi(config.regressors.type, 'narx')
+        input_lags = config.regressors.nk : (config.regressors.nk + config.regressors.nb - 1);
+        output_lags = 1:config.regressors.na;
+    else
+        input_lags = config.regressors.input_lags;
+        output_lags = config.regressors.output_lags;
+    end
+    max_lag = max([input_lags, output_lags]);
+    
+    y_n_step = zeros(N, num_outputs);
+    y_n_step(1:max_lag, :) = Y_val(1:max_lag, :);
+    
+    for k = (max_lag+1):N
+        % Eğer (k - max_lag) n_steps'in katıysa gerçek veriyi kullan (Reset noktası)
+        % Değilse, bir önceki adımda yaptığı tahmini kullan.
+        
+        curr_in = [];
+        if config.regressors.include_bias, curr_in = [curr_in, 1]; end
+        
+        % Girişler (u her zaman biliniyor varsayılır)
+        for i_idx = 1:num_inputs
+            for lag = input_lags
+                curr_in = [curr_in, U_val(k-lag, i_idx)];
+            end
+        end
+        
+        % Çıkış gecikmeleri (Kritik nokta burası)
+        for o_idx = 1:num_outputs
+            for lag = output_lags
+                % n_steps kontrolü: 
+                % Eğer tahmin penceresinin içindeysek kendi tahminini, 
+                % pencere başındaysak gerçek veriyi al.
+                if mod(k - max_lag - 1, n_steps) == 0
+                    % Yeni bir tahmin bloğu başlıyor: Gerçek geçmişi kullan
+                    curr_in = [curr_in, Y_val(k-lag, o_idx)];
+                else
+                    % Bloğun içindeyiz: Kendi ürettiği tahmini kullan
+                    curr_in = [curr_in, y_n_step(k-lag, o_idx)];
+                end
+            end
+        end
+        
+        % Gizli birimler ve Çıkış (Aynı mantık)
+        temp_in = curr_in;
+        for h = 1:length(W_hidden)
+            v = g_func(temp_in * W_hidden{h});
+            temp_in = [temp_in, v];
+        end
+        y_n_step(k, :) = temp_in * w_o;
+    end
+    
+    % Fit hesaplama
+    y_n_step = y_n_step(max_lag+1:end, :);
+    y_true = Y_val(max_lag+1:end, :);
+    fit_n_step = (1 - (norm(y_true - y_n_step) / norm(y_true - mean(y_true)))) * 100;
+end
+
+
+

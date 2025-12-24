@@ -106,9 +106,17 @@ end
 % =============================
 % Yardımcı fonksiyonlar (Aynı Kalıyor)
 % =============================
+% function [loss, grad_w] = loss_and_grad(w, X_batch, T_batch)
+%     Y = X_batch * w;                    
+%     E = T_batch - Y;                    
+%     loss = 0.5 * mean(E.^2, 'all');     
+%     grad_w = dlgradient(loss, w);       
+% end
+
 function [loss, grad_w] = loss_and_grad(w, X_batch, T_batch)
     Y = X_batch * w;                    
     E = T_batch - Y;                    
-    loss = 0.5 * mean(E.^2, 'all');     
+    % MSE yerine MAE: Farkların mutlak değerinin ortalaması
+    loss = mean(abs(E), 'all');     
     grad_w = dlgradient(loss, w);       
 end

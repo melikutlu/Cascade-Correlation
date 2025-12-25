@@ -32,28 +32,28 @@ config.regressors.type = 'narx';     % 'narx' veya 'custom'
 config.regressors.na = 1;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
 config.regressors.nb = 1;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
 config.regressors.nk = 0;            % Giriş gecikmesi (delay)
-config.regressors.include_bias = true;
+config.regressors.include_bias = false;
 
 % ==== ÖZEL GECİKMELER İÇİN (type='custom' ise) ====
 % config.regressors.input_lags = [1, 2, 3];
 % config.regressors.output_lags = [1, 2, 4, 6];
 
 % ==== GİRİŞ/ÇIKIŞ BOYUTLARI ====
-config.model.num_inputs = 1;      % Giriş değişkeni sayısı (u boyutu)
+config.model.num_inputs = 4;      % Giriş değişkeni sayısı (u boyutu)
 config.model.num_outputs = 1;     % Çıkış değişkeni sayısı (y boyutu)
 
 % ==== MODEL HİPERPARAMETRELERİ ====
-config.model.max_hidden_units = 0;
+config.model.max_hidden_units = 100;
 config.model.target_mse = 0.00005;
-config.model.output_trainer = 'GD_Autograd_1';
-config.model.eta_output = 0.005;
+config.model.output_trainer = 'GD_Autograd';
+config.model.eta_output = 0.001;
 config.model.mu = 0.75;
-config.model.max_epochs_output = 100;
+config.model.max_epochs_output = 300;
 config.model.min_mse_change = 1e-9;
 config.model.epsilon = 1e-8;
-config.model.eta_candidate = 0.001;
-config.model.max_epochs_candidate = 50;
-config.model.eta_output_gd = 0.05;
+config.model.eta_candidate = 0.002;
+config.model.max_epochs_candidate = 300;
+config.model.eta_output_gd = 0.002;
 config.model.batch_size = 32;
 
 % Aktivasyon fonksiyonu
@@ -195,7 +195,7 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     % Durma Kontrolü
     mse_history(num_hidden_units + 1) = current_mse;
     
-    if (mse_history(end-1) - current_mse) < 1e-2
+    if (mse_history(end-1) - current_mse) < 1e-5
         fprintf('*** İyileşme yetersiz. Döngü sonlandırılıyor. ***\n');
         break;
     end
@@ -212,12 +212,12 @@ fprintf('\n=== PERFORMANS ANALİZLERİ ===\n');
 if config.plotting.enabled
     % --- A) EĞİTİM PERFORMANSI ---
     plotPerformanceSimple(T_train, Y_pred_stage1, X_output_input, ...
-        w_o_trained, 'EĞİTİM Verisi Performansı (Normalize)', config);
+        w_o_trained, 'EĞİTİM Verisi Performansı (Normalize)', config,num_hidden_units);
     
     % --- B) DOĞRULAMA PERFORMANSI ---
     evaluateModelOptimized(X_val_bias, T_val, w_o_stage1_trained, ...
         w_o_trained, W_hidden, g, ...
-        'DOĞRULAMA Verisi (One-Step Prediction - Normalize)', config);
+        'DOĞRULAMA Verisi (One-Step Prediction - Normalize)', config,num_hidden_units);
 end
 
 %% 7. SİMÜLASYON MODU (Free Run)
@@ -256,28 +256,6 @@ if config.plotting.show_simulation
         grid on;
     end
 end
-
-%% N-STEP PREDICTION TEST
-n_test = 10; % Denemek istediğiniz adım sayısı
-[y_10_step_norm, fit_10] = predictNStepCCNN(U_val_norm, Y_val_norm, ...
-    w_o_trained, W_hidden, g, config, n_test);
-
-fprintf('n=%d Adımlı Tahmin Fit Değeri: %.2f%%\n', n_test, fit_10);
-
-% Geri normalizasyon (Gerçek birimler için)
-y_10_real = denormalizeData(y_10_step_norm, config.norm_method, norm_stats.y);
-y_val_real_short = Y_val_raw(reg_info.max_lag+1:end, :);
-
-% Grafik (Hata veren satır düzeltildi)
-figure('Name', sprintf('%d-Step Prediction', n_test), 'Color', 'w');
-plot(y_val_real_short, 'k', 'LineWidth', 1.5, 'DisplayName', 'Gerçek Veri'); 
-hold on;
-plot(y_10_real, 'b--', 'LineWidth', 1.2, 'DisplayName', sprintf('%d-Step Tahmin', n_test));
-title(sprintf('%d-Step Ahead Prediction (Fit: %.2f%%)', n_test, fit_10));
-legend('show');
-xlabel('Zaman Örneği');
-ylabel('Çıkış (Gerçek Değerler)');
-grid on;
 
 %% 8. ÖZET
 fprintf('\n=== ÖZET ===\n');
@@ -320,37 +298,37 @@ end
 function [U_train, Y_train, U_val, Y_val] = loadTwotankData(config)
     % Twotankdata için özel yükleyici
     
-    load twotankdata;
-    z_full = iddata(y, u, config.data.twotank.sampling_time);
+    load SIEngineData IOData
+
+    eData = IOData(1:6e4,:);     % portion used for estimation
+    vData = IOData(6e4+1:end,:); % portion used for validation
+
+    [eDataN, C, S] = normalize(eData);
+    s_x = table2array(S);
+    c_x = table2array(C);
+
+    vDataN = (vData - c_x) ./ s_x;
+
+    % Downsample datasets 10 times
+    eDataD = idresamp(eDataN,[1 10]);
+    vDataD = idresamp(vDataN,[1 10]);
     
-    % Veriyi böl
-    N_total = length(z_full.y);
-    train_end = floor(N_total * config.data.train_ratio);
-    val_end = train_end + floor(N_total * config.data.val_ratio);
-    
-    % Eğitim verisi
-    if config.data.train_ratio > 0
-        z1 = z_full(1:train_end);
-        z1f = idfilt(z1, 3, config.data.twotank.filter_cutoff);
-        z1f = z1f(config.data.twotank.warmup_samples:end);
-        U_train = z1f.u;
-        Y_train = z1f.y;
-    else
-        U_train = [];
-        Y_train = [];
-    end
-    
-    % Doğrulama verisi
-    if config.data.val_ratio > 0
-        z2 = z_full(train_end+1:val_end);
-        z2f = idfilt(z2, 3, config.data.twotank.filter_cutoff);
-        z2f = z2f(config.data.twotank.warmup_samples:end);
-        U_val = z2f.u;
-        Y_val = z2f.y;
-    else
-        U_val = [];
-        Y_val = [];
-    end
+    xTrain = table2array(eDataD);
+    out = xTrain(:, end);
+    xTrain(:, end) = [];
+    xTrain = [out xTrain];
+
+    U_train = xTrain(:,2:end);
+    Y_train = xTrain(:,1);
+
+    xTest = table2array(vDataD);
+    out_val = xTest(:, end);
+    xTest(:, end) = [];
+    xTest = [out_val xTest];
+
+    U_val = xTest(:,2:end);
+    Y_val = xTest(:,1);
+
 end
 
 function [U_train, Y_train, U_val, Y_val] = loadCSVData(config)
@@ -474,9 +452,7 @@ function [U_train, Y_train, U_val, Y_val] = loadFromWorkspace(config)
 end
 
 function [X_bias, T, reg_info] = createRegressorsDynamic(U, Y, config)
-    % Dinamik regresör matrisi oluşturur
-    % İstek: u(k) ve y(k-1) verildiğinde T(k) = y(k) olmalı.
-    % Yani Target, regresördeki y değerinin "bir sonraki" değeri olmalıdır.
+    % Dinamik regresör matrisi oluşturur (NARX veya custom)
     
     N = size(U, 1);
     num_inputs = config.model.num_inputs;
@@ -484,51 +460,39 @@ function [X_bias, T, reg_info] = createRegressorsDynamic(U, Y, config)
     
     % 1. Gecikmeleri belirle
     if strcmpi(config.regressors.type, 'narx')
-        % NARX:
-        % nk=0 -> u(k)'yı dahil et
-        % na=1 -> y(k-1)'i dahil et
+        % NARX tarzı gecikmeler
         na = config.regressors.na;
         nb = config.regressors.nb;
         nk = config.regressors.nk;
         
-        input_lags = nk:(nk+nb-1); % nk=0, nb=1 => [0]
-        output_lags = 1:na;        % na=1 => [1]
+        input_lags = nk:(nk+nb-1);
+        output_lags = 1:na;
         
     elseif strcmpi(config.regressors.type, 'custom')
+        % Özel gecikmeler
         input_lags = config.regressors.input_lags;
         output_lags = config.regressors.output_lags;
+        
     else
-        error('Bilinmeyen regresör tipi.');
+        error('Bilinmeyen regresör tipi: %s', config.regressors.type);
     end
     
-    % 2. Maksimum gecikmeyi bul (Verinin nereden başlayacağını belirler)
+    % 2. En büyük gecikme
     max_lag = max([input_lags, output_lags]);
     
-    % Eğer output_lags boşsa (sadece giriş varsa) max_lag en az 1 olmalı ki T geleceği göstersin
-    if isempty(output_lags) && max_lag == 0
-         % Sadece u(k) var ama y(k) tahmin edilecek, sorun yok.
-    end
-
-    % 3. Başlangıç İndeksi
-    % Örnek: max_lag=1 (y(k-1) kullanılıyor).
-    % O zaman ilk tahmin edilebilir nokta k=2'dir.
-    % Regresör: y(1), Target: y(2).
+    % 3. Regresör matrisini oluştur
     start_idx = max_lag + 1;
-    
-    % X (Girdi) ve T (Hedef) matrislerini oluştur
     X = [];
     
-    % 3.1 Giriş Gecikmeleri (u)
+    % 3.1 Giriş gecikmeleri
     for input_idx = 1:num_inputs
         for lag = input_lags
-            % u(k - lag)
             col_data = U(start_idx-lag:end-lag, input_idx);
             X = [X, col_data];
         end
     end
     
-    % 3.2 Çıkış Gecikmeleri (y)
-    % Burada y(k - lag) alıyoruz. lag=1 ise y(k-1).
+    % 3.2 Çıkış gecikmeleri
     for output_idx = 1:num_outputs
         for lag = output_lags
             col_data = Y(start_idx-lag:end-lag, output_idx);
@@ -536,57 +500,29 @@ function [X_bias, T, reg_info] = createRegressorsDynamic(U, Y, config)
         end
     end
     
-    % 4. Target Matrisi (T)
-    % İSTEĞİNİZE GÖRE DÜZELTME:
-    % Target her zaman "şu anki zaman adımı" (k) veya 
-    % regresördeki "k-1"in bir sonrası olmalıdır.
-    % start_idx = k (şu anki zaman).
-    T = Y(start_idx:end, :);
-    
-    % 5. Bias ekle
+    % 4. Bias ekle
     if config.regressors.include_bias
         X_bias = [ones(size(X,1), 1), X];
     else
         X_bias = X;
     end
     
+    % 5. Hedef matrisi (ileri bir adım)
+    T = Y(start_idx:end, :);
+    
     % 6. Bilgileri kaydet
     reg_info.input_lags = input_lags;
     reg_info.output_lags = output_lags;
     reg_info.max_lag = max_lag;
+    reg_info.num_features = size(X_bias, 2);
+    reg_info.num_samples = size(X_bias, 1);
     
-    % --- DEBUG: KULLANICIYA HİZALAMAYI GÖSTER ---
-    fprintf('\n    --- REGRESÖR HİZALAMA KONTROLÜ ---\n');
-    fprintf('    (İlk satır örneği)\n');
-    
-    % Girişten bir örnek göster (ilk sütun bias, ikinci sütun u)
-    if config.regressors.include_bias
-        u_val_sample = X_bias(1, 2); 
-    else
-        u_val_sample = X_bias(1, 1);
-    end
-    
-    % Regresördeki Y örneğini bul (Son sütun genellikle y(k-1)'dir)
-    y_reg_sample = X_bias(1, end); 
-    
-    % Target örneği
-    t_val_sample = T(1, 1);
-    
-    fprintf('    Regresördeki Giriş u(k):   %.4f\n', u_val_sample);
-    fprintf('    Regresördeki Geçmiş y(k-1): %.4f\n', y_reg_sample);
-    fprintf('    Hedef T (Beklenen y(k)):   %.4f\n', t_val_sample);
-    
-    % Mantık Kontrolü
-    % Regresördeki y, T'den önceki y mi? (Raw veriden kontrol)
-    % T(1) aslında Y(start_idx)
-    % Regresör Y(1) aslında Y(start_idx - 1)
-    if abs(Y(start_idx,1) - t_val_sample) < 1e-10 && abs(Y(start_idx-1,1) - y_reg_sample) < 1e-10
-         fprintf('    >> ONAY: Target, regresördeki Y değerinden tam olarak BİR SONRAKİ değerdir.\n');
-    else
-         fprintf('    >> UYARI: Hizalamada beklenmedik durum!\n');
-    end
-    fprintf('    ----------------------------------\n');
+    % Debug bilgisi
+    fprintf('  Giriş gecikmeleri: %s\n', mat2str(input_lags));
+    fprintf('  Çıkış gecikmeleri: %s\n', mat2str(output_lags));
+    fprintf('  Maksimum gecikme: %d\n', max_lag);
 end
+
 function [y_sim, fit_sim] = simulateCCNNModel(U_val, Y_val, w_o, W_hidden, g_func, config)
     % Free-run simülasyonu
     N = size(U_val, 1);
@@ -665,7 +601,7 @@ function [y_sim, fit_sim] = simulateCCNNModel(U_val, Y_val, w_o, W_hidden, g_fun
     end
 end
 
-function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, plot_title, config)
+function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, plot_title, config,num_hidden_units)
     % Model değerlendirme fonksiyonu
     
     num_hidden = length(W_hidden);
@@ -693,7 +629,7 @@ function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, pl
         figure('Name', plot_title, 'Color', 'w');
         plot(T_val, 'k', 'LineWidth', 1.5); hold on;
         plot(Y_stage1, 'r--', 'DisplayName', sprintf('Gizli Katman Yok - Fit: %.2f%%', fit_stage1));
-        plot(Y_final, 'b-', 'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden, fit_final));
+        plot(Y_final, 'b-', 'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden_units, fit_final));
         legend('show', 'Location', 'best');
         title(sprintf('%s (Fit: %.2f%%)', plot_title, fit_final));
         xlabel('Zaman Örneği');
@@ -702,7 +638,7 @@ function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, pl
     end
 end
 
-function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, config)
+function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, config,num_hidden_units)
     % Performans grafiği
     
     Y_final = X_final_input * w_final;
@@ -718,7 +654,7 @@ function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, c
         plot(Y_stage1, 'r--', 'LineWidth', 1.2, ...
             'DisplayName', sprintf('Gizli Katman Yok - Fit: %.2f%%', fit_stage1));
         plot(Y_final, 'b-', 'LineWidth', 1.2, ...
-            'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden_calc, fit_final));
+            'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden_units, fit_final));
         legend('show', 'Location', 'best');
         title(sprintf('%s (Fit: %.2f%%)', title_txt, fit_final));
         xlabel('Zaman Örneği');
@@ -726,71 +662,3 @@ function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, c
         grid on;
     end
 end
-
-function [y_n_step, fit_n_step] = predictNStepCCNN(U_val, Y_val, w_o, W_hidden, g_func, config, n_steps)
-    % n_steps: Kaç adım ötesini tahmin edeceği (Ör: 5, 10, 50)
-    
-    N = size(U_val, 1);
-    num_outputs = config.model.num_outputs;
-    num_inputs = config.model.num_inputs;
-    
-    % Regresör ayarları
-    if strcmpi(config.regressors.type, 'narx')
-        input_lags = config.regressors.nk : (config.regressors.nk + config.regressors.nb - 1);
-        output_lags = 1:config.regressors.na;
-    else
-        input_lags = config.regressors.input_lags;
-        output_lags = config.regressors.output_lags;
-    end
-    max_lag = max([input_lags, output_lags]);
-    
-    y_n_step = zeros(N, num_outputs);
-    y_n_step(1:max_lag, :) = Y_val(1:max_lag, :);
-    
-    for k = (max_lag+1):N
-        % Eğer (k - max_lag) n_steps'in katıysa gerçek veriyi kullan (Reset noktası)
-        % Değilse, bir önceki adımda yaptığı tahmini kullan.
-        
-        curr_in = [];
-        if config.regressors.include_bias, curr_in = [curr_in, 1]; end
-        
-        % Girişler (u her zaman biliniyor varsayılır)
-        for i_idx = 1:num_inputs
-            for lag = input_lags
-                curr_in = [curr_in, U_val(k-lag, i_idx)];
-            end
-        end
-        
-        % Çıkış gecikmeleri (Kritik nokta burası)
-        for o_idx = 1:num_outputs
-            for lag = output_lags
-                % n_steps kontrolü: 
-                % Eğer tahmin penceresinin içindeysek kendi tahminini, 
-                % pencere başındaysak gerçek veriyi al.
-                if mod(k - max_lag - 1, n_steps) == 0
-                    % Yeni bir tahmin bloğu başlıyor: Gerçek geçmişi kullan
-                    curr_in = [curr_in, Y_val(k-lag, o_idx)];
-                else
-                    % Bloğun içindeyiz: Kendi ürettiği tahmini kullan
-                    curr_in = [curr_in, y_n_step(k-lag, o_idx)];
-                end
-            end
-        end
-        
-        % Gizli birimler ve Çıkış (Aynı mantık)
-        temp_in = curr_in;
-        for h = 1:length(W_hidden)
-            v = g_func(temp_in * W_hidden{h});
-            temp_in = [temp_in, v];
-        end
-        y_n_step(k, :) = temp_in * w_o;
-    end
-    
-    % Fit hesaplama
-    y_n_step = y_n_step(max_lag+1:end, :);
-    y_true = Y_val(max_lag+1:end, :);
-    fit_n_step = (1 - (norm(y_true - y_n_step) / norm(y_true - mean(y_true)))) * 100;
-end
-
-
-

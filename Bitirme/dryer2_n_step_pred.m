@@ -32,7 +32,7 @@ config.regressors.type = 'narx';     % 'narx' veya 'custom'
 config.regressors.na = 1;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
 config.regressors.nb = 0;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
 config.regressors.nk = 0;            % Giriş gecikmesi (delay)
-config.regressors.include_bias = false;
+config.regressors.include_bias = true;
 
 % ==== ÖZEL GECİKMELER İÇİN (type='custom' ise) ====
 % config.regressors.input_lags = [1, 2, 3];
@@ -45,7 +45,7 @@ config.model.num_outputs = 1;     % Çıkış değişkeni sayısı (y boyutu)
 % ==== MODEL HİPERPARAMETRELERİ ====
 config.model.max_hidden_units = 100;
 config.model.target_mse = 0.00005;
-config.model.output_trainer = 'GD_Autograd';
+config.model.output_trainer = 'GD_Autograd_1';
 config.model.eta_output = 0.001;
 config.model.mu = 0.75;
 config.model.max_epochs_output = 300;
@@ -139,32 +139,27 @@ mse_history = [];
 
 %% AŞAMA 1: BAŞLANGIÇ AĞI EĞİTİMİ (Gizli Katmansız)
 fprintf('\n=== AŞAMA 1: GİZLİ KATMANSIZ EĞİTİM ===\n');
+W_hidden = {}; % Değişkeni burada başlat
 
-w_o_initial = randn(num_inputs_with_bias, config.model.num_outputs) * 0.01;
+% Fonksiyon çağrısı
+[w_o_stage1_trained, E_residual, current_mse, Y_pred_stage1] = trainOutputLayer_NStep_Autograd( ...
+    U_train_norm, Y_train_norm, w_o_initial, ...
+    max_epochs_output, config.model.eta_output_gd, config, W_hidden, g);
 
-% Başlangıçta giriş matrisleri, saf regresör matrisleridir
-X_output_input = X_train_bias;
-X_candidate_input = X_train_bias;
+% Boyut uyumu için X_output_input'u sadece tahmin edilen kısma göre filtrele
+max_lag = max(config.regressors.na, config.regressors.nb + config.regressors.nk);
+X_output_input_reduced = X_output_input; 
+T_train_reduced = T_train;
 
-all_params.eta_output = eta_output;
-all_params.mu = mu;
-all_params.epsilon = epsilon;
-all_params.eta_output_gd = eta_output_gd;
-all_params.batch_size = batch_size;
-
-[w_o_stage1_trained, E_residual, current_mse] = runOutputTraining(...
-    config.model.output_trainer, X_output_input, T_train, w_o_initial, ...
-    max_epochs_output, all_params);
-
-T_variance_sum = sum((T_train - mean(T_train)).^2);
-Y_pred_stage1 = X_output_input * w_o_stage1_trained;
+% Fit hesaplama
+T_variance_sum = sum((T_train_reduced - mean(T_train_reduced)).^2);
 fit_percentage_train_stage1 = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
 
 fprintf('Aşama 1 MSE: %f | Fit: %.2f%%\n', current_mse, fit_percentage_train_stage1);
 mse_history(1) = current_mse;
 
 %% AŞAMA 2: DİNAMİK BİRİM EKLEME DÖNGÜSÜ
-W_hidden = {};
+
 w_o_trained = w_o_stage1_trained;
 
 fprintf('\n=== GİZLİ BİRİM EKLEME DÖNGÜSÜ ===\n');
@@ -185,10 +180,10 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     
     % C) Çıktı Katmanı Yeniden Eğitimi
     w_o_initial_new = [w_o_trained; randn(1, config.model.num_outputs) * 0.01];
-    
-    [w_o_trained, E_residual, current_mse] = runOutputTraining(...
-        config.model.output_trainer, X_output_input, T_train, w_o_initial_new, ...
-        max_epochs_output, all_params);
+
+    [w_o_trained, E_residual, current_mse, Y_pred_loop] = trainOutputLayer_NStep_Autograd( ...
+        U_train_norm, Y_train_norm, w_o_initial_new, ...
+        max_epochs_output, config.model.eta_output_gd, config, W_hidden, g);
     
     current_fit = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
     
@@ -256,6 +251,9 @@ if config.plotting.show_simulation
         grid on;
     end
 end
+
+
+
 
 %% 8. ÖZET
 fprintf('\n=== ÖZET ===\n');
@@ -660,3 +658,4 @@ function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, c
         grid on;
     end
 end
+

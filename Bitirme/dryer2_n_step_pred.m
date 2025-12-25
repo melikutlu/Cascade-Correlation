@@ -1,158 +1,271 @@
-% Cascade Correlation (CCNN) - n-Step Prediction Odaklı Master Versiyon
+% Kaskad Korelasyon (CCNN) - GENELLEŞTİRİLMİŞ VERSİYON
 clear; clc; close all; rng(0);
 
-%% 0. KONFİGÜRASYON
+%% 0. KONFİGÜRASYON - KULLANICI BURAYI DÜZENLER
+% =========================================================================
 config = struct();
-% Veri Kaynağı
-config.data.source = 'twotankdata'; 
-config.data.train_ratio = 0.5;
-config.data.val_ratio = 0.5;
+
+% ==== VERİ KAYNAĞI AYARLARI ====
+config.data.source = 'twotankdata';  % 'twotankdata', 'csv', 'mat', 'workspace'
+config.data.filepath = '';           % CSV/MAT dosyası için yol (ör: 'data/mydata.csv')
+
+% CSV/MAT için sütun ayarları (isteğe bağlı)
+% config.data.input_columns = [1, 2, 3];    % Giriş sütun numaraları
+% config.data.output_columns = [4, 5];      % Çıkış sütun numaraları
+
+% Twotankdata özel ayarları
+config.data.twotank.filter_cutoff = 0.066902;
+config.data.twotank.warmup_samples = 20;
 config.data.twotank.sampling_time = 0.2;
 
-% N-STEP KRİTİK AYARI
-% Model her n adımda bir gerçek veriyi görecek, aradaki adımlarda kendi tahminini kullanacak.
-config.n_predict = 10; 
+% Veri bölme oranları (0-1 arası, toplam 1 olmalı)
+config.data.train_ratio = 0.5;    % Eğitim oranı
+config.data.val_ratio = 0.5;      % Doğrulama oranı
+config.data.test_ratio = 0;       % Test oranı (0 = kullanma)
 
-% Regresör Ayarları (NARX Yapısı)
-config.regressors.type = 'narx';
-config.regressors.na = 2; % Çıkış gecikmesi
-config.regressors.nb = 2; % Giriş gecikmesi
-config.regressors.nk = 1; % Gecikme (delay)
-config.regressors.include_bias = true;
-
-% Model Hiperparametreleri
-config.model.max_hidden_units = 15;
-config.model.target_mse = 1e-6;
-config.model.output_trainer = 'GD_Auto_nstep';
-config.model.activation = 'tanh';
+% ==== NORMALİZASYON AYARLARI ====
+% Seçenekler: 'ZScore', 'MinMax', 'None'
 config.norm_method = 'ZScore';
 
-%% 1. VERİ HAZIRLAMA
-fprintf('\n=== VERİ HAZIRLANIYOR ===\n');
-[U_raw, Y_raw, U_v_raw, Y_v_raw] = loadDataByConfig(config);
+% ==== REGRESÖR AYARLARI (NARX STYLE) ====
+config.regressors.type = 'narx';     % 'narx' veya 'custom'
+config.regressors.na = 1;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
+config.regressors.nb = 0;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
+config.regressors.nk = 0;            % Giriş gecikmesi (delay)
+config.regressors.include_bias = true;
 
-% Normalizasyon
-[U_tr, Y_tr, U_val, Y_val, norm_stats] = normalizeData(config.norm_method, U_raw, Y_raw, U_v_raw, Y_v_raw);
+% ==== ÖZEL GECİKMELER İÇİN (type='custom' ise) ====
+% config.regressors.input_lags = [1, 2, 3];
+% config.regressors.output_lags = [1, 2, 4, 6];
 
-% Eğitim için temel regresör matrisi
-[X_tr_base, T_tr_base, reg_info] = createRegressorsDynamic(U_tr, Y_tr, config);
+% ==== GİRİŞ/ÇIKIŞ BOYUTLARI ====
+config.model.num_inputs = 1;      % Giriş değişkeni sayısı (u boyutu)
+config.model.num_outputs = 1;     % Çıkış değişkeni sayısı (y boyutu)
 
-% Aktivasyon Tanımı
-g = @(a) tanh(a);
+% ==== MODEL HİPERPARAMETRELERİ ====
+config.model.max_hidden_units = 100;
+config.model.target_mse = 0.00005;
+config.model.output_trainer = 'GD_Autograd_1';
+config.model.eta_output = 0.001;
+config.model.mu = 0.75;
+config.model.max_epochs_output = 300;
+config.model.min_mse_change = 1e-9;
+config.model.epsilon = 1e-8;
+config.model.eta_candidate = 0.002;
+config.model.max_epochs_candidate = 300;
+config.model.eta_output_gd = 0.002;
+config.model.batch_size = 32;
 
-%% 2. CCNN EĞİTİMİ (One-Step Optimization)
-% Not: Gradyan hesapları için eğitim "one-step" üzerinden yapılır.
-[w_o_final, W_hidden_list, num_h] = trainCCNNCore(X_tr_base, T_tr_base, config, g);
+% Aktivasyon fonksiyonu
+config.model.activation = 'tanh';  % 'tanh', 'sigmoid', 'relu'
 
-%% 3. N-STEP PERFORMANS DEĞERLENDİRME
-fprintf('\n=== N-STEP TAHMİN ANALİZİ (n=%d) ===\n', config.n_predict);
+% ==== GÖRSELLEŞTİRME AYARLARI ====
+config.plotting.enabled = true;
+config.plotting.show_simulation = true;
 
-% Eğitim ve Validasyon setleri için n-step tahmini çalıştır
-[y_tr_n, fit_tr] = runNStepPrediction(U_tr, Y_tr, w_o_final, W_hidden_list, g, config);
-[y_val_n, fit_val] = runNStepPrediction(U_val, Y_val, w_o_final, W_hidden_list, g, config);
+% =========================================================================
+%% 1. VERİ YÜKLEME (Config'e göre)
+fprintf('\n=== VERİ YÜKLENİYOR ===\n');
 
-%% 4. SONUÇLAR VE GÖRSELLEŞTİRME
-% Gerçek birimlere dönüş
-y_val_n_real = denormalizeData(y_val_n, config.norm_method, norm_stats.y);
-y_val_true_real = Y_v_raw(reg_info.max_lag+1:end, :);
+[U_train_raw, Y_train_raw, U_val_raw, Y_val_raw, U_test_raw, Y_test_raw] = ...
+    loadDataByConfig(config);
 
-fprintf('Eğitim n-Step Fit: %.2f%%\n', fit_tr);
-fprintf('Validasyon n-Step Fit: %.2f%%\n', fit_val);
-
-% Grafik: Tahmin vs Gerçek
-figure('Name', sprintf('CCNN %d-Step Prediction Analysis', config.n_predict), 'Color', 'w');
-subplot(2,1,1);
-plot(y_val_true_real, 'k', 'LineWidth', 1.5, 'DisplayName', 'Gerçek Veri'); hold on;
-plot(y_val_n_real, 'r--', 'LineWidth', 1.2, 'DisplayName', sprintf('%d-Step Tahmin', config.n_predict));
-title(sprintf('Validasyon Verisi %d-Adımlı Tahmin (Fit: %.2f%%)', config.n_predict, fit_val));
-legend('show'); grid on; ylabel('Çıktı');
-
-% Grafik: Hata Dağılımı
-subplot(2,1,2);
-plot(y_val_true_real - y_val_n_real, 'b');
-title('Tahmin Hatası (Residuals)');
-xlabel('Zaman Adımı'); ylabel('Hata'); grid on;
-
-%% === TEMEL N-STEP FONKSİYONU ===
-
-function [y_pred, fit_score] = runNStepPrediction(U, Y, w_o, W_h, g_func, config)
-    % Bu fonksiyon n-adımlı özyinelemeli tahmini gerçekleştirir.
-    N = size(U, 1);
-    n_step = config.n_predict;
-    max_lag = max([config.regressors.na, config.regressors.nb + config.regressors.nk]);
-    
-    y_pred = zeros(N, size(Y, 2));
-    y_pred(1:max_lag, :) = Y(1:max_lag, :); % Başlangıç için gerçek veri
-    
-    for k = (max_lag + 1):N
-        % Reset mekanizması: Her n adımda bir gerçek geçmişi kullan
-        is_reset_point = (mod(k - max_lag - 1, n_step) == 0);
-        
-        % 1. Regresör oluştur (u biliniyor, y tahmini veya gerçek)
-        curr_x = [];
-        if config.regressors.include_bias, curr_x = [curr_x, 1]; end
-        
-        % Giriş u gecikmeleri
-        for lag = config.regressors.nk : (config.regressors.nk + config.regressors.nb - 1)
-            curr_x = [curr_x, U(k-lag, :)];
-        end
-        
-        % Çıkış y gecikmeleri (Kritik n-step mantığı)
-        for lag = 1:config.regressors.na
-            if is_reset_point
-                curr_x = [curr_x, Y(k-lag, :)]; % Yeni pencere başı: Gerçek veri
-            else
-                curr_x = [curr_x, y_pred(k-lag, :)]; % Pencere içi: Kendi tahmini
-            end
-        end
-        
-        % 2. Gizli Birimlerden Geçir (CCNN Yapısı)
-        temp_feat = curr_x;
-        for i = 1:length(W_h)
-            v = g_func(temp_feat * W_h{i});
-            temp_feat = [temp_feat, v];
-        end
-        
-        % 3. Çıkış Hesapla
-        y_pred(k, :) = temp_feat * w_o;
-    end
-    
-    % Kırpma ve Fit Hesaplama
-    y_pred = y_pred(max_lag+1:end, :);
-    y_true = Y(max_lag+1:end, :);
-    fit_score = (1 - (norm(y_true - y_pred)/norm(y_true - mean(y_true)))) * 100;
+% Boyut kontrolü
+fprintf('Eğitim verisi: %d örnek, %d giriş, %d çıkış\n', ...
+    size(U_train_raw, 1), size(U_train_raw, 2), size(Y_train_raw, 2));
+if ~isempty(U_val_raw)
+    fprintf('Doğrulama verisi: %d örnek\n', size(U_val_raw, 1));
 end
 
-function [w_o, W_hidden, h_idx] = trainCCNNCore(X, T, config, g)
-    % CCNN çekirdek eğitim algoritması
-    fprintf('CCNN Eğitimi: One-step optimizasyon başlıyor...\n');
+%% 2. NORMALİZASYON
+fprintf('\n=== NORMALİZASYON İŞLEMİ ===\n');
+fprintf('Normalizasyon Yöntemi: %s\n', config.norm_method);
+
+% Normalizasyon uygula (arkadaşının fonksiyonu)
+[U_train_norm, Y_train_norm, U_val_norm, Y_val_norm, norm_stats] = ...
+    normalizeData(config.norm_method, U_train_raw, Y_train_raw, U_val_raw, Y_val_raw);
+
+%% 3. REGRESÖR MATRİSLERİNİ OLUŞTUR
+fprintf('\n=== REGRESÖR MATRİSLERİ OLUŞTURULUYOR ===\n');
+
+% Regresör oluştur (yeni fonksiyon)
+[X_train_bias, T_train, reg_info] = createRegressorsDynamic(...
+    U_train_norm, Y_train_norm, config);
+
+[X_val_bias, T_val, ~] = createRegressorsDynamic(...
+    U_val_norm, Y_val_norm, config);
+
+% Model boyutlarını güncelle
+num_inputs_with_bias = size(X_train_bias, 2);
+fprintf('Regresör matrisi: %d örnek, %d özellik\n', ...
+    size(X_train_bias, 1), num_inputs_with_bias);
+fprintf('Hedef matrisi: %d örnek, %d çıkış\n', size(T_train, 1), size(T_train, 2));
+
+%% 4. AKTİVASYON FONKSİYONU SEÇ
+fprintf('\n=== AKTİVASYON FONKSİYONU ===\n');
+fprintf('Seçilen: %s\n', config.model.activation);
+
+switch lower(config.model.activation)
+    case 'tanh'
+        g = @(a) tanh(a);
+        g_prime = @(v) 1 - v.^2;
+    case 'sigmoid'
+        g = @(a) 1./(1 + exp(-a));
+        g_prime = @(v) v .* (1 - v);
+    case 'relu'
+        g = @(a) max(0, a);
+        g_prime = @(v) double(v > 0);
+    otherwise
+        error('Bilinmeyen aktivasyon: %s', config.model.activation);
+end
+
+%% 5. HİPERPARAMETRELERİ AYARLA
+% Config'den alınan parametreleri değişkenlere ata
+eta_output = config.model.eta_output;
+mu = config.model.mu;
+max_epochs_output = config.model.max_epochs_output;
+min_mse_change = config.model.min_mse_change;
+epsilon = config.model.epsilon;
+eta_candidate = config.model.eta_candidate;
+max_epochs_candidate = config.model.max_epochs_candidate;
+target_mse = config.model.target_mse;
+max_hidden_units = config.model.max_hidden_units;
+eta_output_gd = config.model.eta_output_gd;
+batch_size = config.model.batch_size;
+
+% Başlangıç değerleri
+num_hidden_units = 0;
+mse_history = [];
+
+%% AŞAMA 1: BAŞLANGIÇ AĞI EĞİTİMİ (Gizli Katmansız)
+fprintf('\n=== AŞAMA 1: GİZLİ KATMANSIZ EĞİTİM ===\n');
+W_hidden = {}; % Değişkeni burada başlat
+
+% Fonksiyon çağrısı
+[w_o_stage1_trained, E_residual, current_mse, Y_pred_stage1] = trainOutputLayer_NStep_Autograd( ...
+    U_train_norm, Y_train_norm, w_o_initial, ...
+    max_epochs_output, config.model.eta_output_gd, config, W_hidden, g);
+
+% Boyut uyumu için X_output_input'u sadece tahmin edilen kısma göre filtrele
+max_lag = max(config.regressors.na, config.regressors.nb + config.regressors.nk);
+X_output_input_reduced = X_output_input; 
+T_train_reduced = T_train;
+
+% Fit hesaplama
+T_variance_sum = sum((T_train_reduced - mean(T_train_reduced)).^2);
+fit_percentage_train_stage1 = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
+
+fprintf('Aşama 1 MSE: %f | Fit: %.2f%%\n', current_mse, fit_percentage_train_stage1);
+mse_history(1) = current_mse;
+
+%% AŞAMA 2: DİNAMİK BİRİM EKLEME DÖNGÜSÜ
+
+w_o_trained = w_o_stage1_trained;
+
+fprintf('\n=== GİZLİ BİRİM EKLEME DÖNGÜSÜ ===\n');
+fprintf('Hedef MSE: %f\n', target_mse);
+
+while current_mse > target_mse && num_hidden_units < max_hidden_units
+    num_hidden_units = num_hidden_units + 1;
     
-    % Başlangıç: Gizli birimsiz ağırlıklar
-    w_o = randn(size(X,2), size(T,2)) * 0.01;
-    [w_o, E_res, cur_mse] = runOutputTraining(config.model.output_trainer, X, T, w_o, config.model.max_epochs_output, config.model);
+    % A) Aday Birim Eğitimi
+    [w_new_hidden, v_new_hidden] = trainCandidateUnit(...
+        X_candidate_input, E_residual, max_epochs_candidate, eta_candidate, g, g_prime);
     
-    W_hidden = {}; h_idx = 0; prev_mse = cur_mse;
+    W_hidden{num_hidden_units} = w_new_hidden;
     
-    while cur_mse > config.model.target_mse && h_idx < config.model.max_hidden_units
-        h_idx = h_idx + 1;
-        
-        % Aday Birim Eğitimi
-        [w_new, v_new] = trainCandidateUnit(X, E_res, config.model.max_epochs_candidate, config.model.eta_candidate, g, @(v) 1-v.^2);
-        
-        W_hidden{h_idx} = w_new;
-        X = [X, v_new]; % Ağı genişlet
-        
-        % Çıkış Katmanı Güncelleme
-        w_init = [w_o; randn(1, size(T,2)) * 0.01];
-        [w_o, E_res, cur_mse] = runOutputTraining(config.model.output_trainer, X, T, w_init, config.model.max_epochs_output, config.model);
-        
-        fprintf('Birim %d eklendi | MSE: %.6f\n', h_idx, cur_mse);
-        if (prev_mse - cur_mse) < 1e-8, break; end
-        prev_mse = cur_mse;
+    % B) Matrisleri Güncelle (Yeni nöron çıktısını ekle)
+    X_output_input = [X_output_input, v_new_hidden];
+    X_candidate_input = [X_candidate_input, v_new_hidden];
+    
+    % C) Çıktı Katmanı Yeniden Eğitimi
+    w_o_initial_new = [w_o_trained; randn(1, config.model.num_outputs) * 0.01];
+
+    [w_o_trained, E_residual, current_mse, Y_pred_loop] = trainOutputLayer_NStep_Autograd( ...
+        U_train_norm, Y_train_norm, w_o_initial_new, ...
+        max_epochs_output, config.model.eta_output_gd, config, W_hidden, g);
+    
+    current_fit = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
+    
+    % Durma Kontrolü
+    mse_history(num_hidden_units + 1) = current_mse;
+    
+    if (mse_history(end-1) - current_mse) < 1e-5
+        fprintf('*** İyileşme yetersiz. Döngü sonlandırılıyor. ***\n');
+        break;
+    end
+    
+    fprintf('Gizli Birim #%d | MSE: %f | Fit: %.2f%%\n', ...
+        num_hidden_units, current_mse, current_fit);
+end
+
+fprintf('\nToplam %d gizli birim eklendi.\n', num_hidden_units);
+
+%% 6. PERFORMANS ANALİZLERİ
+fprintf('\n=== PERFORMANS ANALİZLERİ ===\n');
+
+if config.plotting.enabled
+    % --- A) EĞİTİM PERFORMANSI ---
+    plotPerformanceSimple(T_train, Y_pred_stage1, X_output_input, ...
+        w_o_trained, 'EĞİTİM Verisi Performansı (Normalize)', config,num_hidden_units);
+    
+    % --- B) DOĞRULAMA PERFORMANSI ---
+    evaluateModelOptimized(X_val_bias, T_val, w_o_stage1_trained, ...
+        w_o_trained, W_hidden, g, ...
+        'DOĞRULAMA Verisi (One-Step Prediction - Normalize)', config,num_hidden_units);
+end
+
+%% 7. SİMÜLASYON MODU (Free Run)
+if config.plotting.show_simulation
+    fprintf('\n=== SİMÜLASYON (FREE RUN) MODU ===\n');
+    
+    % Simülasyona NORMALIZE verileri gönder
+    [y_simulation_norm, ~] = simulateCCNNModel(U_val_norm, Y_val_norm, ...
+        w_o_trained, W_hidden, g, config);
+    
+    % Geri normalizasyon
+    y_simulation_real = denormalizeData(y_simulation_norm, ...
+        config.norm_method, norm_stats.y);
+    
+    % Gerçek veri (orijinal)
+    y_val_real = Y_val_raw(reg_info.max_lag+1:end, :);
+    
+    % Fit değerini gerçek veriler üzerinden hesapla
+    if size(y_val_real, 1) == size(y_simulation_real, 1)
+        fit_simulation_real = (1 - (norm(y_val_real - y_simulation_real) / ...
+            norm(y_val_real - mean(y_val_real)))) * 100;
+    else
+        fit_simulation_real = NaN;
+        fprintf('Uyarı: Simülasyon ve gerçek veri boyutları uyuşmuyor.\n');
+    end
+    
+    % Simülasyon Grafiği (Gerçek Birimler)
+    if ~isnan(fit_simulation_real)
+        figure('Name', 'Simulation Result (Real World Units)', 'Color', 'w');
+        plot(y_val_real, 'k', 'LineWidth', 1.5); hold on;
+        plot(y_simulation_real, 'r--', 'LineWidth', 1.2);
+        title(sprintf('Simülasyon (Gerçek Birimler) - Fit: %.2f%%', fit_simulation_real));
+        legend('Gerçek Veri', 'Simülasyon');
+        ylabel('Output (Real)');
+        xlabel('Zaman Örneği');
+        grid on;
     end
 end
 
 
+
+
+%% 8. ÖZET
+fprintf('\n=== ÖZET ===\n');
+fprintf('Veri Kaynağı: %s\n', config.data.source);
+fprintf('Regresör Tipi: %s\n', config.regressors.type);
+if strcmpi(config.regressors.type, 'narx')
+    fprintf('  na=%d, nb=%d, nk=%d\n', config.regressors.na, ...
+        config.regressors.nb, config.regressors.nk);
+end
+fprintf('Gizli Birim Sayısı: %d\n', num_hidden_units);
+fprintf('Son MSE: %f\n', current_mse);
+fprintf('Normalizasyon: %s\n', config.norm_method);
 
 %% YARDIMCI FONKSİYONLAR
 % =========================================================================

@@ -10,6 +10,7 @@ function [w_trained, E_residual, current_mse] = runOutputTraining(method, X, T, 
         case 'GD_Autograd'
             [w_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd(X, T, w_initial, ...
                                                       max_epochs, params.eta_output_gd, params.batch_size);
+   
             case 'GD_Autograd_1'
             [w_trained, E_residual, current_mse] = trainOutputLayer_GD_Autograd_1(X, T, w_initial, ...
                                                       max_epochs, params.eta_output_gd, params.batch_size);
@@ -26,3 +27,4 @@ function [w_trained, E_residual, current_mse] = runOutputTraining(method, X, T, 
             error('Geçersiz eğitim metodu seçimi: %s', method);
     end
 end
+

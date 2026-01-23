@@ -4,6 +4,9 @@ clc;
 close all;
 rng(0); % Tekrarlanabilir sonuçlar için
 
+addpath('../function');
+addpath('../train_data');
+
 % --- ÇIKIŞ AĞIRLIKLARI İÇİN EĞİTİM YÖNTEMİ SEÇİMİ ---
 % Seçenekler:
 %   'Quickprop_DL'  -> trainOutputLayer_Quickprop_With_dlgrad.m (Gradyan descenti Matlab'ın kendi fonksiyonu ile kullanır.)

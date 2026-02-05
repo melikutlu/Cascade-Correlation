@@ -17,8 +17,8 @@ config.data.val_ratio   = 0.5;
 config.norm_method = 'ZScore'; % 'ZScore', 'MinMax', 'None'
 
 % --- Recursive N-step ---
-config.prediction.n_steps = 1;   % N
-config.validation.n_steps = 500;
+config.prediction.n_steps = 20;   % N
+config.validation.n_steps = 1478;
 
 % --- Regressors (SISO): model uses u(k) and y(k-1)
 config.regressors.include_bias = false;
@@ -97,7 +97,7 @@ while current_mse > config.model.target_mse && numel(W_hidden) < config.model.ma
     
     % GÜNCELLEME: Candidate unit'i N-step trajectory loss ile eğit
     [w_h, v_h_train, current_mse_candidate] = trainCandidateUnit_Trajectory( ...
-        X0_train, Utr_seq, Ttr_seq, W_hidden, w_o, g, config, ...
+        X0_train, Utr_seq, Ttr_seq, W_hidden, g, config, ...
         config.model.max_epochs_candidate, config.model.eta_candidate);
     
     % Debug için candidate MSE'yi yazdır
@@ -139,35 +139,6 @@ fprintf('Total hidden units: %d\n', numel(W_hidden));
 fprintf('Final Train MSE: %.6g\n', current_mse);
 
 %% 6) VALIDATION - RECURSIVE PREDICTION (İlk girişten başlayarak tüm seri)
-fprintf('\n=== TRAINING - RECURSIVE PREDICTION (Full Series) ===\n');
-
-% Başlangıç değerleri: train setinin ilk değerleri
-if config.regressors.include_bias
-    y_init_train = Y_train(1);  % y(k-1) için ilk değer
-else
-    y_init_train = Y_train(1);  % y(k-1) için ilk değer
-end
-
-% Tüm train setini tahmin et (recursive)
-Yhat_train_recursive = recursivePredictFullSeries(U_train, y_init_train, W_hidden, w_o, g, config);
-
-% Denormalize et
-Yhat_train_real = denormalizeData_min(Yhat_train_recursive, config.norm_method, norm_stats.y);
-
-% Fit hesapla
-fit_train_full = fitPercent(Y_train_raw, Yhat_train_real);
-fprintf('Full Series Training Fit: %.2f%%\n', fit_train_full);
-
-% ===== PLOT: TRAIN (Full Series) =====
-figure('Color','w','Name','TRAIN - Full Series Recursive Prediction');
-plot(Y_train_raw(:,1), 'k', 'LineWidth', 1.5); hold on;
-plot(Yhat_train_real, 'b--', 'LineWidth', 1.2);
-grid on;
-xlabel('Time step (k)');
-ylabel('y (real units)');
-title(sprintf('TRAIN - Full Series Recursive Prediction | Hidden=%d | Fit=%.2f%%', ...
-    numel(W_hidden), fit_train_full));
-legend('True', 'CCNN Prediction', 'Location', 'best');
 fprintf('\n=== VALIDATION - RECURSIVE PREDICTION (Full Series) ===\n');
 
 % Başlangıç değerleri: val setinin ilk değerleri
@@ -371,7 +342,7 @@ function Yhat_seq = forwardCCNN_recursiveTrajectory(X0_bias, U_seq, W_hidden, g,
 end
 
 function [w_h, v_h, current_mse] = trainCandidateUnit_Trajectory( ...
-    X0_bias, U_seq, T_seq, W_hidden, w_o_current, g, config, max_epochs, eta)
+    X0_bias, U_seq, T_seq, W_hidden, g, config, max_epochs, eta)
 % GÜNCELLEME: Candidate unit'i N-step trajectory loss ile eğit
     
     [M, d0] = size(X0_bias);
@@ -381,26 +352,25 @@ function [w_h, v_h, current_mse] = trainCandidateUnit_Trajectory( ...
     % Boyut: temel özellikler + mevcut hidden unit sayısı
     w_h = randn(d0 + num_hidden, 1) * 0.01;
     
-    % Adam optimizer parametreleri - TANIMLA!
+    % Adam optimizer parametreleri
     averageGrad = [];
     averageSqGrad = [];
     iteration = 0;
-    gradDecay = 0.9;        % EKSİKTİ - EKLENDİ
-    sqGradDecay = 0.999;    % EKSİKTİ - EKLENDİ
-    eps_adam = 1e-8;        % EKSİKTİ - EKLENDİ
+    gradDecay = 0.9;
+    sqGradDecay = 0.999;
+    eps_adam = 1e-8;
     
     % Convert to dlarray for autodiff
     X0_dl = dlarray(X0_bias);
     U_dl = dlarray(U_seq);
     T_dl = dlarray(T_seq);
     w_h_dl = dlarray(w_h);
-    w_o_current_dl = dlarray(w_o_current);
     
     for epoch = 1:max_epochs
         iteration = iteration + 1;
         
-        [loss, grad_w] = dlfeval(@loss_and_grad_candidate_traj_fixed, ...
-            w_h_dl, X0_dl, U_dl, T_dl, W_hidden, w_o_current_dl, g, config);
+        [loss, grad_w] = dlfeval(@loss_and_grad_candidate_traj, ...
+            w_h_dl, X0_dl, U_dl, T_dl, W_hidden, g, config);
         
         % Adam update
         [w_h_dl, averageGrad, averageSqGrad] = adamupdate(w_h_dl, grad_w, ...
@@ -435,22 +405,22 @@ function [w_h, v_h, current_mse] = trainCandidateUnit_Trajectory( ...
     v_h = g(x_aug * w_h);
     
     % MSE'yi hesapla (sadece bilgi için)
-    % Mevcut model + candidate ile tahmin yap
+    % ÖNEMLİ DÜZELTME: Candidate unit dahil edilmiş halde tahmin yap
+    % Geçici olarak candidate unit'i mevcut hidden unit'lere ekle
     W_hidden_temp = W_hidden;
     W_hidden_temp{end+1} = w_h;
     
-    % Çıkış ağırlıkları: mevcut ağırlıklar + candidate için 0
-    w_o_temp = [w_o_current; 0];
+    % Çıkış ağırlıklarını güncelle: tüm ağırlıklar 0, sadece candidate unit için 1
+    w_o_temp = zeros(d0 + num_hidden + 1, 1);
+    w_o_temp(end) = 1;
     
     % Tahmin yap
     Yhat_seq = forwardCCNN_recursiveTrajectory(X0_bias, U_seq, W_hidden_temp, g, w_o_temp, config);
     Eseq = T_seq - Yhat_seq;
     current_mse = 0.5 * mean(Eseq.^2, 'all');
 end
-
-function [loss, grad_w] = loss_and_grad_candidate_traj_fixed(...
-    w_h, X0_dl, U_dl, T_dl, W_hidden, w_o_current, g, config)
-% Candidate unit için trajectory loss ve gradient (DÜZELTİLMİŞ)
+function [loss, grad_w] = loss_and_grad_candidate_traj(w_h, X0_dl, U_dl, T_dl, W_hidden, g, config)
+% Candidate unit için trajectory loss ve gradient
     
     M = size(X0_dl,1);
     Npred = size(U_dl,2);
@@ -486,8 +456,9 @@ function [loss, grad_w] = loss_and_grad_candidate_traj_fixed(...
         v_candidate = g(x_aug * w_h);
         x_aug_with_candidate = [x_aug, v_candidate];
         
-        % Çıkış ağırlıkları: mevcut ağırlıklar + candidate için 0
-        w_o_temp = [w_o_current; 0];
+        % Çıkış ağırlıkları: tüm ağırlıklar 0, sadece candidate unit için 1
+        w_o_temp = zeros(size(x_aug_with_candidate, 2), 1);
+        w_o_temp(end) = 1;
         
         yhat = x_aug_with_candidate * w_o_temp;
         Yhat_seq(:,t) = yhat;

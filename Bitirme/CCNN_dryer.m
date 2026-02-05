@@ -320,7 +320,7 @@ end
 function [U_train, Y_train, U_val, Y_val] = loadTwotankData(config)
     % Twotankdata için özel yükleyici
     
-    load dryer2; % provides u, y
+    load dryer2; 
 
             z_full = iddata(y2, u2, config.data.twotank.sampling_time);
         

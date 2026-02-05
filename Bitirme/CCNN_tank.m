@@ -320,30 +320,37 @@ end
 function [U_train, Y_train, U_val, Y_val] = loadTwotankData(config)
     % Twotankdata için özel yükleyici
     
-    load dryer2; % provides u, y
-
-            z_full = iddata(y2, u2, config.data.twotank.sampling_time);
-        
-        % Veriyi böl
-        N_total = length(z_full.y);
-        train_end = floor(N_total * config.data.train_ratio);
-        val_end = train_end + floor(N_total * config.data.val_ratio);
-                
-
-            % Train
-            z1 = z_full(1:train_end);
-            z1f = idfilt(z1, 3, config.data.twotank.filter_cutoff);
-            z1f = z1f(config.data.twotank.warmup_samples:end);
-            U_train = z1f.u;
-            Y_train = z1f.y;
-
-            % Val
-            z2 = z_full(train_end+1:val_end);
-            z2f = idfilt(z2, 3, config.data.twotank.filter_cutoff);
-            z2f = z2f(config.data.twotank.warmup_samples:end);
-            U_val = z2f.u;
-            Y_val = z2f.y;
-
+    load twotankdata;
+    z_full = iddata(y, u, config.data.twotank.sampling_time);
+    
+    % Veriyi böl
+    N_total = length(z_full.y);
+    train_end = floor(N_total * config.data.train_ratio);
+    val_end = train_end + floor(N_total * config.data.val_ratio);
+    
+    % Eğitim verisi
+    if config.data.train_ratio > 0
+        z1 = z_full(1:train_end);
+        z1f = idfilt(z1, 3, config.data.twotank.filter_cutoff);
+        z1f = z1f(config.data.twotank.warmup_samples:end);
+        U_train = z1f.u;
+        Y_train = z1f.y;
+    else
+        U_train = [];
+        Y_train = [];
+    end
+    
+    % Doğrulama verisi
+    if config.data.val_ratio > 0
+        z2 = z_full(train_end+1:val_end);
+        z2f = idfilt(z2, 3, config.data.twotank.filter_cutoff);
+        z2f = z2f(config.data.twotank.warmup_samples:end);
+        U_val = z2f.u;
+        Y_val = z2f.y;
+    else
+        U_val = [];
+        Y_val = [];
+    end
 end
 
 function [U_train, Y_train, U_val, Y_val] = loadCSVData(config)

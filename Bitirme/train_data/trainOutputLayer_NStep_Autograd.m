@@ -24,30 +24,30 @@ end
 function [total_loss, grad] = calculate_n_step_loss(w_dl, X_bias, T, config)
     N = config.model.n_step;
     batch_size = config.model.batch_size;
-    [num_samples, num_features] = size(X_bias);
+    [num_samples, ~] = size(X_bias);
     
-    % N adım ileri bakacağımız için sınırları belirle
     idx = randi([1, num_samples - N], batch_size, 1);
     sample_loss = dlarray(0);
     
     for i = 1:batch_size
         start_idx = idx(i);
-        curr_x = X_bias(start_idx, :); 
+        curr_x = dlarray(X_bias(start_idx, :)); 
         
         for step = 1:N
             % 1. Tahmin
             y_pred = curr_x * w_dl;
             
-            % 2. Hata biriktir
-            target = T(start_idx + step - 1, :);
-            sample_loss = sample_loss + sum((y_pred - target).^2);
+            % 2. Hedef
+            target = dlarray(T(start_idx + step - 1, :));
             
-            % 3. Regresör Güncelle (Feedback)
+            % 3. L2 Loss (Manuel Hesaplama - DataFormat gerektirmez)
+            % MSE için: (y_pred - target)^2
+            err = y_pred - target;
+            sample_loss = sample_loss + sum(err.^2);
+            
+            % 4. Regresör Güncelle (Feedback)
             if step < N
-                % Bir sonraki adımın u(k+1) bilgisini GERÇEK veriden al
                 next_raw_x = X_bias(start_idx + step, :);
-                
-                % Kendi tahminimizi (y_pred) regresöre yerleştir
                 curr_x = update_regressor_with_pred(next_raw_x, y_pred, config);
             end
         end

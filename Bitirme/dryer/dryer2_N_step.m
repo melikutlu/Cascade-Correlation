@@ -181,9 +181,12 @@ fprintf('Hedef MSE: %f\n', target_mse);
 while current_mse > target_mse && num_hidden_units < max_hidden_units
     num_hidden_units = num_hidden_units + 1;
     
-    % A) Aday Birim Eğitimi
-    [w_new_hidden, v_new_hidden] = trainCandidateUnit(...
-        X_candidate_input, E_residual, max_epochs_candidate, eta_candidate, g, g_prime);
+
+    % Aday eğitimi için gerekli ek parametreler
+% ÇAĞRI:
+[w_new_hidden, v_new_hidden] = trainCandidateUnit_NStep_Autograd(...
+    X_candidate_input, T_train, E_residual, max_epochs_candidate, all_params, config,g,eta_candidate);
+
     
     W_hidden{num_hidden_units} = w_new_hidden;
     

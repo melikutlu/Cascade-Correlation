@@ -17,6 +17,10 @@ config.data.filepath = '';           % CSV/MAT dosyası için yol (ör: 'data/my
 % config.data.input_columns = [1, 2, 3];    % Giriş sütun numaraları
 % config.data.output_columns = [4, 5];      % Çıkış sütun numaraları
 
+% ==== N-STEP AYARLARI ====
+config.model.n_step = 5; % Kaç adım sonrasına kadar hata hesaplansın?
+config.model.training_mode = 'n_step'; % 'one_step' veya 'n_step'
+
 % Twotankdata özel ayarları
 config.data.twotank.filter_cutoff = 0.066902;
 config.data.twotank.warmup_samples = 20;
@@ -34,9 +38,9 @@ config.norm_method = 'ZScore';
 % ==== REGRESÖR AYARLARI (NARX STYLE) ====
 config.regressors.type = 'narx';     % 'narx' veya 'custom'
 config.regressors.na = 1;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
-config.regressors.nb = 0;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
+config.regressors.nb = 1;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))1
 config.regressors.nk = 0;            % Giriş gecikmesi (delay)
-config.regressors.include_bias = false;
+config.regressors.include_bias = true;
 
 % ==== ÖZEL GECİKMELER İÇİN (type='custom' ise) ====
 % config.regressors.input_lags = [1, 2, 3];
@@ -48,9 +52,9 @@ config.model.num_outputs = 1;     % Çıkış değişkeni sayısı (y boyutu)
 
 % ==== MODEL HİPERPARAMETRELERİ ====
 config.model.max_hidden_units = 100;
-config.model.target_mse = 0.00005;
+config.model.target_mse = 0.000001;
 config.model.output_trainer = 'GD_Autograd_1';
-config.model.eta_output = 0.001;
+config.model.eta_output = 0.0001;
 config.model.mu = 0.75;
 config.model.max_epochs_output = 300;
 config.model.min_mse_change = 1e-9;
@@ -158,7 +162,7 @@ all_params.batch_size = batch_size;
 
 [w_o_stage1_trained, E_residual, current_mse] = runOutputTraining(...
     config.model.output_trainer, X_output_input, T_train, w_o_initial, ...
-    max_epochs_output, all_params);
+    max_epochs_output, all_params,config);
 
 T_variance_sum = sum((T_train - mean(T_train)).^2);
 Y_pred_stage1 = X_output_input * w_o_stage1_trained;
@@ -192,7 +196,7 @@ while current_mse > target_mse && num_hidden_units < max_hidden_units
     
     [w_o_trained, E_residual, current_mse] = runOutputTraining(...
         config.model.output_trainer, X_output_input, T_train, w_o_initial_new, ...
-        max_epochs_output, all_params);
+        max_epochs_output, all_params,config);
     
     current_fit = (1 - (sum(E_residual.^2) / T_variance_sum)) * 100;
     

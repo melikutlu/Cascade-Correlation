@@ -1,4 +1,3 @@
-
 function [y_sim, fit_sim] = simulateCCNNModel(U_val, Y_val, w_o, W_hidden, g_func, config)
     % Free-run simülasyonu
     N = size(U_val, 1);

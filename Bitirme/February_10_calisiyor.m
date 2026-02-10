@@ -23,16 +23,19 @@ config.norm_method = 'ZScore';
 config.prediction.n_steps = 480;
 config.validation.n_steps = 500;
 
+
+
+
 config.regressors.include_bias = false;
 
 config.model.max_hidden_units   = 10;
 config.model.target_mse         = 5e-5;
 
-config.model.max_epochs_output    = 1000;
-config.model.eta_output           = 0.002;
+config.model.max_epochs_output    = 100;
+config.model.eta_output           = 0.02;
 
-config.model.max_epochs_candidate = 1000;
-config.model.eta_candidate        = 0.002;
+config.model.max_epochs_candidate = 100;
+config.model.eta_candidate        = 0.02;
 
 config.model.activation = 'tanh';
 
@@ -309,13 +312,13 @@ Ns = length(Y) - N;
 X0   = zeros(Ns, 2);      % [u(k-1), y(k-1)]
 Useq = zeros(Ns, N);
 Tseq = zeros(Ns, N);
-
 for i = 1:Ns
     X0(i,:)   = [U(i), Y(i)];
     Useq(i,:) = U(i+1:i+N)';
     Tseq(i,:) = Y(i+1:i+N)';
 end
 end
+
 
 
 

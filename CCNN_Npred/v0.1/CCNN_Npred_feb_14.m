@@ -13,8 +13,8 @@ config.data.twotank.warmup_samples = 0;
 config.data.twotank.sampling_time = 0.2; % s
 config.data.twotank.filter_cutoff = 0.066902; % Hz (optional)
 
-config.data.train_ratio = 0.5;
-config.data.val_ratio = 0.5;
+config.data.train_ratio = 0.8;
+config.data.val_ratio = 0.2;
 
 config.norm_method = 'ZScore';
 
@@ -22,8 +22,8 @@ config.prediction.n_steps = 15; % default N-step horizon (can be auto-adjusted)
 config.prediction.auto_full_horizon = true; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [0 1]; % example: u(t), u(t-1)
-config.regressors.y = [1 2 ]; % example: y(t-1), y(t-2)
+config.regressors.u = [0 1 2]; % example: u(t), u(t-1)
+config.regressors.y = [1 2 3]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
@@ -34,11 +34,11 @@ config.model.min_mse_improvement = 1e-6; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
-config.model.eta_output = 0.05;
+config.model.eta_output = 0.01;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.03;
-config.model.plateau_min_delta = 1e-4;   % loss/metrik iyileşmesi bu değerden küçükse
-config.model.plateau_patience = 10;      % bu kadar epoch boyunca iyileşme yoksa dur
+config.model.plateau_min_delta = 1e-6;   % loss/metrik iyileşmesi bu değerden küçükse
+config.model.plateau_patience = 50;      % bu kadar epoch boyunca iyileşme yoksa dur
 
 % ------------------
 % DATA
@@ -189,8 +189,15 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
     % Inputs are trajectory batches: X0 (Mxd0), U (MxN), T (MxN)
     % W_hidden, w_o are current model parameters (kept fixed)
 
-    d = size(X0,2) + numel(W_hidden); % candidate input dim
-    w_h = dlarray(randn(d,1)*0.01);
+    % Giriş boyutu = regresör sayısı (u + y)
+    nu = numel(config.regressors.u);
+    ny = numel(config.regressors.y);
+    d = nu + ny;  % Temel giriş boyutu
+    
+    % Mevcut gizli nöronların çıktıları da girişe eklenir
+    d = d + numel(W_hidden);  % TOPLAM giriş boyutu
+    
+    w_h = dlarray(randn(d, 1) * 0.01);
 
     X0_d = dlarray(X0); U_d = dlarray(U); T_d = dlarray(T);
     w_o_d = dlarray(w_o);
@@ -259,98 +266,115 @@ function [L, metric, grad] = loss_candidate_corr(w_h, X0, U, T, W_hidden, w_o, g
 end
 
 function x = buildRegressorRow(X0, U, t, W_hidden, g)
-    % build row-level regressor matrix for all M samples at time t
-    ulags = evalin('caller','config.regressors.u');
-    ylags = evalin('caller','config.regressors.y');
-    ulags = ulags(:)'; ylags = ylags(:)';
-    nu = numel(ulags); ny = numel(ylags);
-    M = size(X0,1);
-
-    % u part
+    ulags = evalin('caller', 'config.regressors.u');
+    ylags = evalin('caller', 'config.regressors.y');
+    ulags = ulags(:)'; 
+    ylags = ylags(:)';
+    nu = numel(ulags); 
+    ny = numel(ylags);
+    M = size(X0, 1);
+    
+    % uvals hesapla
     uvals = zeros(M, nu);
-    for j=1:nu
+    for j = 1:nu
         L = ulags(j);
-        if L==0
-            uvals(:,j) = U(:,t);
+        if L == 0
+            uvals(:, j) = U(:, t);
         else
             idx = t - L;
             if idx >= 1
-                uvals(:,j) = U(:, idx);
+                uvals(:, j) = U(:, idx);
             else
-                uvals(:,j) = X0(:, j);
+                uvals(:, j) = X0(:, j);
             end
         end
     end
-    % y part
+    
+    % yvals hesapla - BURASI ÖNEMLİ!
     yvals = zeros(M, ny);
-    for j=1:ny
+    for j = 1:ny
         L = ylags(j);
         idx = t - L;
         if idx >= 1
-            yvals(:,j) = 0; % will be filled from previous Y in forward; for candidate activation we use X0's past y
-            % but for simplicity use X0 initial values when t-L < 1
-            yvals(:,j) = X0(:, nu + j);
+            % Geçmişteki tahmin edilmiş y değerleri lazım!
+            % Şimdilik X0 kullanıyoruz - BU YANLIŞ!
+            yvals(:, j) = 0;  % TODO: Buraya önceki tahminler gelmeli
         else
-            yvals(:,j) = X0(:, nu + j);
+            yvals(:, j) = X0(:, nu + j);
         end
     end
-
-    x = [uvals, yvals];
     
-    % append existing hidden activations computed from X0/U sequence? For candidate input we include hidden outputs
-    for h=1:numel(W_hidden)
-        x = [x, g(x * W_hidden{h})];
+    % ÖNCE dlarray'e çevir
+    x = dlarray([uvals, yvals]);
+    
+    % SONRA gizli katmanları ekle (her birini dlarray'e çevirerek)
+    for h = 1:numel(W_hidden)
+        w_h = dlarray(W_hidden{h});  % cell array'den dlarray'e
+        hidden_output = g(x * w_h);
+        x = [x, hidden_output];
     end
-    x = dlarray(x);
 end
-
 function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
-    % forward pass computing N-step outputs with current W_hidden and w_o (no candidate)
-    M = size(X0,1); N = size(U,2);
-    Y = dlarray(zeros(M,N));
-
-    % we'll keep a history of predicted y for each sample; initialize from X0
-    % X0 columns are [u regressors, y regressors]
-    ulags = config.regressors.u(:)'; ylags = config.regressors.y(:)';
-    nu = numel(ulags); ny = numel(ylags);
-
-    % For recursive predictions we maintain past y-values; start with X0's last y regressor column(s)
-    yprev = X0(:, nu+1:nu+ny); % M x ny
-
-    for t=1:N
-        % build current regressor x for each sample
+    M = size(X0, 1); 
+    N = size(U, 2);
+    Y = dlarray(zeros(M, N));
+    
+    ulags = config.regressors.u(:)';
+    ylags = config.regressors.y(:)';
+    nu = numel(ulags);
+    ny = numel(ylags);
+    
+    % yprev: [y(t-1), y(t-2), ..., y(t-ny)] şeklinde sıralı
+    % X0'un son ny sütunu: [y(t-1), y(t-2), ..., y(t-ny)] OLMALI!
+    yprev = X0(:, nu+1:nu+ny);  % Bu doğru
+    
+    for t = 1:N
+        % uvals hesapla (aynı)
         uvals = zeros(M, nu);
-        for j=1:nu
+        for j = 1:nu
             L = ulags(j);
-            if L==0
-                uvals(:,j) = U(:, t);
+            if L == 0
+                uvals(:, j) = U(:, t);
             else
                 idx = t - L;
                 if idx >= 1
-                    uvals(:,j) = U(:, idx);
+                    uvals(:, j) = U(:, idx);
                 else
-                    uvals(:,j) = X0(:, j);
+                    uvals(:, j) = X0(:, j);
                 end
             end
         end
-        % y part: take from yprev with appropriate lag mapping
+        
+        % yvals hesapla - DÜZELTİLDİ!
         yvals = zeros(M, ny);
-        for j=1:ny
-            yvals(:,j) = yprev(:,j);
+        for j = 1:ny
+            L = ylags(j);
+            % ylags = [1,2,3] ise:
+            % L=1 -> y(t-1) -> yprev'in 1. sütunu
+            % L=2 -> y(t-2) -> yprev'in 2. sütunu
+            % L=3 -> y(t-3) -> yprev'in 3. sütunu
+            yvals(:, j) = yprev(:, j);  % Sıralama aynı OLMALI!
         end
-
-        x = [uvals, yvals];
-        for h=1:numel(W_hidden)
-            x = [x, g(x * W_hidden{h})];
+        
+        % Giriş vektörünü oluştur
+        x = dlarray([uvals, yvals]);
+        
+        % Gizli katmanları ekle
+        for h = 1:numel(W_hidden)
+            w_h = dlarray(W_hidden{h});
+            x = [x, g(x * w_h)];
         end
-        y = x * w_o;
-        Y(:,t) = y;
-
-        % update yprev: shift and insert last output as most recent
-        if ny>1
-            yprev = [y, yprev(:,1:ny-1)];
+        
+        % Çıkışı hesapla
+        w_o_dl = dlarray(w_o);
+        y = x * w_o_dl;
+        Y(:, t) = y;
+        
+        % yprev'i güncelle: yeni tahmini başa ekle, en eskiyi at
+        if ny > 1
+            yprev = [extractdata(y), yprev(:, 1:ny-1)];
         else
-            yprev = y;
+            yprev = extractdata(y);
         end
     end
 end

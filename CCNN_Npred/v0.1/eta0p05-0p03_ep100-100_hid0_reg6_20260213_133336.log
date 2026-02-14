@@ -1,0 +1,18 @@
+CCNN Parameter Log
+Created      : 2026-02-13 13:33:36
+Script       : CCNN_Npred.m
+
+eta_out=0.0500 | eta_cand=0.0300 | epoch_out=100 | epoch_cand=100 | hidden=0/10 | regressors=6
+N-step horizon : 1496
+Train MSE       : 0.494604
+Train Fit (%)   : 14.43
+Val   Fit (%)   : 40.22
+
+Regressors.u : [0 1 2]
+Regressors.y : [1 2 3]
+Norm method  : ZScore
+Target MSE   : 5e-05
+
+Saved figure files:
+ - /Users/deniz/Documents/GitHub/Cascade-Correlation-Bitirme/CCNN_Npred/v0.1/eta0p05-0p03_ep100-100_hid0_reg6_20260213_133336_train_fit.png
+ - /Users/deniz/Documents/GitHub/Cascade-Correlation-Bitirme/CCNN_Npred/v0.1/eta0p05-0p03_ep100-100_hid0_reg6_20260213_133336_val_fit.png

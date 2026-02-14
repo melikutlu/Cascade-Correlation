@@ -29,15 +29,12 @@ config.regressors.include_bias = false;
 % Regressor configuration (user can set these before running)
 % Example: config.regressors.u = [0 1]; config.regressors.y = [1 2];
 if ~isfield(config,'regressors') || ~isfield(config.regressors,'u') || ~isfield(config.regressors,'y')
-    config.regressors.u = [0 1 2];   % u lags: 0 means u(t), 1 means u(t-1), ...
-    config.regressors.y = [1 2 3];   % y lags: 1 means y(t-1), 2 means y(t-2), ...
+    config.regressors.u = [0 1];   % u lags: 0 means u(t), 1 means u(t-1), ...
+    config.regressors.y = [1 2];   % y lags: 1 means y(t-1), 2 means y(t-2), ...
 end
 
 config.model.max_hidden_units   = 10;
 config.model.target_mse         = 5e-5;
-% minimum absolute improvement in MSE required after adding a hidden unit
-% If improvement < min_mse_improvement, stop adding hidden units.
-config.model.min_mse_improvement = 1e-6;
 
 config.model.max_epochs_output    = 100;
 config.model.eta_output           = 0.02;
@@ -98,29 +95,14 @@ while current_mse > config.model.target_mse && numel(W_hidden) < config.model.ma
 
     fprintf('Candidate #%d | N-step MSE: %.6g\n', h, cand_mse);
 
-    % tentatively add candidate and expand output weight
     W_hidden{end+1} = w_h;
-    w_o = [w_o; randn*0.01];
 
-    % store previous mse to compute improvement
-    prev_mse = current_mse;
+    % expand output weights
+    w_o = [w_o; randn*0.01];
 
     % === RETRAIN OUTPUT (N-STEP) ===
     [w_o, current_mse] = trainOutputLayer_Trajectory( ...
         X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
-
-    % compute absolute improvement
-    improvement = prev_mse - current_mse;
-
-    % check minimum improvement threshold
-    if improvement < config.model.min_mse_improvement
-        % undo addition
-        W_hidden(end) = [];
-        w_o = w_o(1:end-1);
-        fprintf('Stop adding hidden units: improvement %.3g < threshold %.3g\n', ...
-            improvement, config.model.min_mse_improvement);
-        break;
-    end
 
     mse_hist(end+1) = current_mse;
 
@@ -299,20 +281,6 @@ switch lower(config.data.source)
         w = config.data.twotank.warmup_samples;
         u = u(w+1:end);
         y = y(w+1:end);
-
-        % optional first-order low-pass filtering (simple exponential filter)
-        if isfield(config.data.twotank,'filter_cutoff') && config.data.twotank.filter_cutoff>0
-            fc = config.data.twotank.filter_cutoff; % cutoff freq (Hz)
-            Ts = config.data.twotank.sampling_time;  % sampling time (s)
-            a = 2*pi*fc*Ts / (1 + 2*pi*fc*Ts);
-            u_f = zeros(size(u)); y_f = zeros(size(y));
-            u_f(1) = u(1); y_f(1) = y(1);
-            for k=2:length(u)
-                u_f(k) = a*u(k) + (1-a)*u_f(k-1);
-                y_f(k) = a*y(k) + (1-a)*y_f(k-1);
-            end
-            u = u_f; y = y_f;
-        end
 
     otherwise
         error('Unknown data source');

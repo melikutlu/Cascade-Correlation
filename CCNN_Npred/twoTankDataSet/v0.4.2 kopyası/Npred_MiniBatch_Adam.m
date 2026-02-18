@@ -9,7 +9,7 @@ clear; clc; close all; rng(0);
 % ------------------
 config = struct();
 config.data.source = 'twotankdata';
-config.data.twotank.warmup_samples = 0;
+config.data.twotank.warmup_samples = 20;
 config.data.twotank.sampling_time = 0.2; % s
 config.data.twotank.filter_cutoff = 0.066902; % Hz (optional)
 
@@ -18,8 +18,8 @@ config.data.val_ratio = 0.5;
 
 config.norm_method = 'ZScore';
 
-config.prediction.n_steps = 15; % default N-step horizon (can be auto-adjusted)
-config.prediction.auto_full_horizon = true; % set true to span full usable data length
+config.prediction.n_steps = 20; % default N-step horizon (override auto when disabled)
+config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
 config.regressors.u = [0]; % example: u(t), u(t-1)
@@ -28,14 +28,19 @@ config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-config.model.max_hidden_units = 10;
+config.model.max_hidden_units = 15;
 config.model.target_mse = 5e-5;
-config.model.min_mse_improvement = 1e-6; % early stop threshold
+config.model.min_mse_improvement = -inf; % early stop threshold
 
+% Adam typically saturates within 100-300 epochs; run the full epoch budget.
 config.model.max_epochs_output = 100;
-config.model.eta_output = 0.05;
+config.model.eta_output = 0.008;
 config.model.max_epochs_candidate = 100;
-config.model.eta_candidate = 0.03;
+config.model.eta_candidate = 0.05;
+
+config.training = struct();
+config.training.batch_size_output = 32;     % mini-batch size for output layer updates
+config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
 
 % ------------------
 % DATA
@@ -67,10 +72,15 @@ d0 = size(X0_tr,2);
 w_o = randn(d0,1)*0.01;
 
 % Stage 1: train output weights only (N-step MSE)
-[w_o, current_mse] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
+[w_o, current_mse, outputTrainInfo] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
 fprintf('Stage-1 Train MSE: %.6g\n', current_mse);
+fprintf('Output layer ran %d/%d epochs.\n', outputTrainInfo.epochs_run, config.model.max_epochs_output);
 
 mse_hist = current_mse;
+candidateEpochHistory = [];
+lossPlotHandle = [];
+lossFigHandle = [];
+[lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 
 % Greedy growth
 while current_mse > config.model.target_mse && numel(W_hidden) < config.model.max_hidden_units
@@ -78,15 +88,17 @@ while current_mse > config.model.target_mse && numel(W_hidden) < config.model.ma
     fprintf('\nTraining candidate #%d (maximize N-step residual correlation)\n', h);
 
     % train candidate to maximize correlation with residual (N-step)
-    [w_h, cand_metric] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
+    [w_h, cand_metric, candInfo] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
+    candidateEpochHistory(end+1) = candInfo.epochs_run; %#ok<AGROW>
     fprintf('Candidate #%d | corr^2 (on train residual): %.6g\n', h, cand_metric);
+    fprintf('Candidate #%d used %d/%d epochs.\n', h, candInfo.epochs_run, config.model.max_epochs_candidate);
 
     % tentatively add candidate
     W_hidden{end+1} = w_h;
     w_o = [w_o; randn*0.01];
 
     prev_mse = current_mse;
-    [w_o, current_mse] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
+    [w_o, current_mse, outputTrainInfo] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
 
     improvement = prev_mse - current_mse;
     if improvement < config.model.min_mse_improvement
@@ -99,6 +111,9 @@ while current_mse > config.model.target_mse && numel(W_hidden) < config.model.ma
 
     mse_hist(end+1) = current_mse;
     fprintf('Hidden=%d | Train MSE=%.6g | improvement=%.3g\n', numel(W_hidden), current_mse, improvement);
+    fprintf('Output layer re-train ran %d/%d epochs.\n', ...
+        outputTrainInfo.epochs_run, config.model.max_epochs_output);
+    [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 end
 
 % Full-series recursive prediction and denormalize
@@ -108,16 +123,24 @@ Yhat_va = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, g, config);
 Yhat_tr = Yhat_tr(2:end) * norm_stats.y_std + norm_stats.y_mu;
 Yhat_va = Yhat_va(2:end) * norm_stats.y_std + norm_stats.y_mu;
 
-fit_tr = fitPercent(Ytr_raw(2:end), Yhat_tr);
-fit_va = fitPercent(Yva_raw(2:end), Yhat_va);
-fprintf('\nTrain Fit: %.2f%% | Val Fit: %.2f%%\n', fit_tr, fit_va);
+target_tr = Ytr_raw(2:end);
+target_va = Yva_raw(2:end);
+rmse_tr = sqrt(mean((target_tr - Yhat_tr).^2));
+rmse_va = sqrt(mean((target_va - Yhat_va).^2));
+fit_tr = fitPercent(target_tr, Yhat_tr);
+fit_va = fitPercent(target_va, Yhat_va);
+fprintf('\nTrain Fit: %.2f%% | Train RMSE: %.4f\n', fit_tr, rmse_tr);
+fprintf('Val   Fit: %.2f%% | Val   RMSE: %.4f\n', fit_va, rmse_va);
 
 % Persist key hyperparameters so manual tweaks are traceable.
 logInfo = struct();
 logInfo.eta_output = config.model.eta_output;
 logInfo.eta_candidate = config.model.eta_candidate;
-logInfo.epochs_output = config.model.max_epochs_output;
-logInfo.epochs_candidate = config.model.max_epochs_candidate;
+logInfo.max_epochs_output = config.model.max_epochs_output;
+logInfo.output_epochs_used = outputTrainInfo.epochs_run;
+logInfo.max_epochs_candidate = config.model.max_epochs_candidate;
+logInfo.candidate_epochs_used = candidateEpochHistory;
+logInfo.candidate_runs = numel(candidateEpochHistory);
 logInfo.hidden_units = numel(W_hidden);
 logInfo.max_hidden_units = config.model.max_hidden_units;
 logInfo.regressor_count = numel(config.regressors.u) + numel(config.regressors.y);
@@ -127,6 +150,9 @@ logInfo.n_steps = Npred;
 logInfo.train_mse = current_mse;
 logInfo.fit_train = fit_tr;
 logInfo.fit_val = fit_va;
+logInfo.rmse_train = rmse_tr;
+logInfo.rmse_val = rmse_va;
+logInfo.activation = config.model.activation;
 logFilePath = writeParameterLog(config, logInfo);
 if ~isempty(logFilePath)
     fprintf('Parameter log saved to %s\n', logFilePath);
@@ -134,14 +160,14 @@ end
 
 % Plots (use filtered raw data loaded earlier)
 figTrain = figure('Name','TRAIN - Full Recursive','Color','w');
-plot(Ytr_raw(2:end),'k','LineWidth',1.4); hold on;
+plot(target_tr,'k','LineWidth',1.4); hold on;
 plot(Yhat_tr,'b--','LineWidth',1.2); grid on;
-title(sprintf('TRAIN | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_tr)); legend('True','CCNN');
+title(sprintf('TRAIN | Hidden=%d | Fit=%.2f%% | RMSE=%.4f', numel(W_hidden), fit_tr, rmse_tr)); legend('True','CCNN');
 
 figVal = figure('Name','VAL - Full Recursive','Color','w');
-plot(Yva_raw(2:end),'k','LineWidth',1.4); hold on;
+plot(target_va,'k','LineWidth',1.4); hold on;
 plot(Yhat_va,'r--','LineWidth',1.2); grid on;
-title(sprintf('VAL | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_va)); legend('True','CCNN');
+title(sprintf('VAL | Hidden=%d | Fit=%.2f%% | RMSE=%.4f', numel(W_hidden), fit_va, rmse_va)); legend('True','CCNN');
 
 savedFigurePaths = saveFitFigures(logFilePath, struct('train', figTrain, 'val', figVal));
 if ~isempty(savedFigurePaths) && ~isempty(logFilePath)
@@ -151,10 +177,8 @@ end
 % ------------------
 % LOCAL FUNCTIONS
 % ------------------
-function [w_h, best_metric] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,g,config)
-    % Train a candidate unit to MAXIMIZE correlation^2 with the N-step residual
-    % Inputs are trajectory batches: X0 (Mxd0), U (MxN), T (MxN)
-    % W_hidden, w_o are current model parameters (kept fixed)
+function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,g,config)
+    % Train a candidate unit to MAXIMIZE correlation^2 with the N-step residual using mini-batches.
 
     d = size(X0,2) + numel(W_hidden); % candidate input dim
     w_h = dlarray(randn(d,1)*0.01);
@@ -163,21 +187,41 @@ function [w_h, best_metric] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,g,conf
     w_o_d = dlarray(w_o);
 
     avgG=[]; avgGSq=[]; it=0; best_metric = -Inf; best_w = extractdata(w_h);
+    maxEpochs = config.model.max_epochs_candidate;
+    metric_hist = zeros(maxEpochs,1);
 
-    for ep=1:config.model.max_epochs_candidate
-        it = it + 1;
-        [loss, metric, grad] = dlfeval(@loss_candidate_corr, w_h, X0_d, U_d, T_d, W_hidden, w_o_d, g, config);
-        [w_h, avgG, avgGSq] = adamupdate(w_h, grad, avgG, avgGSq, it, config.model.eta_candidate);
-        metric = gather(extractdata(metric));
-        if metric > best_metric
-            best_metric = metric;
+    numSamples = size(X0,1);
+    batchSize = resolveBatchSize(config, 'batch_size_candidate', numSamples);
+
+    for ep=1:maxEpochs
+        batches = buildMiniBatchOrder(numSamples, batchSize);
+        for b=1:numel(batches)
+            idx = batches{b};
+            Xb = X0_d(idx,:); Ub = U_d(idx,:); Tb = T_d(idx,:);
+            it = it + 1;
+            [loss, ~, grad] = dlfeval(@loss_candidate_corr, w_h, Xb, Ub, Tb, W_hidden, w_o_d, g, config);
+            [w_h, avgG, avgGSq] = adamupdate(w_h, grad, avgG, avgGSq, it, config.model.eta_candidate);
+        end
+
+        metricVal = evaluateCandidateMetric(w_h, X0_d, U_d, T_d, W_hidden, w_o_d, g, config);
+        metric_hist(ep) = metricVal;
+        if metricVal > best_metric
+            best_metric = metricVal;
             best_w = extractdata(w_h);
         end
     end
     w_h = best_w;
+    epochs_run = maxEpochs;
+    metric_hist = metric_hist(1:epochs_run);
+    info = struct('epochs_run', epochs_run, 'metric_history', metric_hist);
 end
 
-function [L, metric, grad] = loss_candidate_corr(w_h, X0, U, T, W_hidden, w_o, g, config)
+function metricVal = evaluateCandidateMetric(w_h, X0, U, T, W_hidden, w_o, g, config)
+    metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, config);
+    metricVal = gather(extractdata(metric));
+end
+
+function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, config)
     % compute current model N-step output without candidate
     Y_model = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
     R = T - Y_model; % residual (M x N)
@@ -187,7 +231,7 @@ function [L, metric, grad] = loss_candidate_corr(w_h, X0, U, T, W_hidden, w_o, g
     v = dlarray(zeros(M,N));
     for t=1:N
         % build regressor vector x_t for all M samples
-        x_t = buildRegressorRow(X0, U, t, W_hidden, g);
+        x_t = buildRegressorRow(X0, U, t, W_hidden, g, config);
         v(:,t) = g(x_t * w_h);
     end
 
@@ -204,15 +248,18 @@ function [L, metric, grad] = loss_candidate_corr(w_h, X0, U, T, W_hidden, w_o, g
     corr2 = (cov_vr.^2) ./ denom; % correlation squared (scalar)
 
     metric = corr2;
-    L = -corr2; % minimize negative corr^2 -> maximize corr^2
+end
+
+function [L, metric, grad] = loss_candidate_corr(w_h, X0, U, T, W_hidden, w_o, g, config)
+    metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, config);
+    L = -metric; % minimize negative corr^2 -> maximize corr^2
     grad = dlgradient(L, w_h);
 end
 
-function x = buildRegressorRow(X0, U, t, W_hidden, g)
+function x = buildRegressorRow(X0, U, t, W_hidden, g, config)
     % build row-level regressor matrix for all M samples at time t
-    ulags = evalin('caller','config.regressors.u');
-    ylags = evalin('caller','config.regressors.y');
-    ulags = ulags(:)'; ylags = ylags(:)';
+    ulags = config.regressors.u(:)';
+    ylags = config.regressors.y(:)';
     nu = numel(ulags); ny = numel(ylags);
     M = size(X0,1);
 
@@ -231,22 +278,15 @@ function x = buildRegressorRow(X0, U, t, W_hidden, g)
             end
         end
     end
-    % y part
+
+    % y part (use initial regressor memory for out-of-range lags)
     yvals = zeros(M, ny);
     for j=1:ny
-        L = ylags(j);
-        idx = t - L;
-        if idx >= 1
-            yvals(:,j) = 0; % will be filled from previous Y in forward; for candidate activation we use X0's past y
-            % but for simplicity use X0 initial values when t-L < 1
-            yvals(:,j) = X0(:, nu + j);
-        else
-            yvals(:,j) = X0(:, nu + j);
-        end
+        yvals(:,j) = X0(:, nu + j);
     end
 
     x = [uvals, yvals];
-    % append existing hidden activations computed from X0/U sequence? For candidate input we include hidden outputs
+    % append existing hidden activations computed from available regressors
     for h=1:numel(W_hidden)
         x = [x, g(x * W_hidden{h})];
     end
@@ -304,16 +344,35 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
     end
 end
 
-function [w_o,mse] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,config)
+function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,config)
     w_o = dlarray(w_o);
     X0 = dlarray(X0); U = dlarray(U); T = dlarray(T);
     avgG=[]; avgGSq=[]; it=0;
-    for ep=1:config.model.max_epochs_output
-        it = it+1;
-        [L,grad] = dlfeval(@loss_output_traj, w_o, X0, U, T, W_hidden, g, config);
-        [w_o, avgG, avgGSq] = adamupdate(w_o, grad, avgG, avgGSq, it, config.model.eta_output);
+    maxEpochs = config.model.max_epochs_output;
+    loss_hist = zeros(maxEpochs,1);
+
+    numSamples = size(X0,1);
+    batchSize = resolveBatchSize(config, 'batch_size_output', numSamples);
+
+    for ep=1:maxEpochs
+        batches = buildMiniBatchOrder(numSamples, batchSize);
+        epochLoss = 0;
+        for b=1:numel(batches)
+            idx = batches{b};
+            Xb = X0(idx,:); Ub = U(idx,:); Tb = T(idx,:);
+            it = it+1;
+            [L,grad] = dlfeval(@loss_output_traj, w_o, Xb, Ub, Tb, W_hidden, g, config);
+            [w_o, avgG, avgGSq] = adamupdate(w_o, grad, avgG, avgGSq, it, config.model.eta_output);
+            batchLoss = gather(extractdata(L));
+            epochLoss = epochLoss + batchLoss * (numel(idx)/numSamples);
+        end
+
+        loss_hist(ep) = epochLoss;
     end
     w_o = extractdata(w_o);
+    epochs_run = maxEpochs;
+    loss_hist = loss_hist(1:epochs_run);
+    info = struct('epochs_run', epochs_run, 'loss_history', loss_hist);
     Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
     % use l2loss with explicit DataFormat
     Yvec = reshape(Y,1,[]);
@@ -423,7 +482,7 @@ function logFilePath = writeParameterLog(config, logInfo)
 
     descriptor = sprintf('eta%.3g-%.3g_ep%d-%d_hid%d_reg%d', ...
         logInfo.eta_output, logInfo.eta_candidate, ...
-        logInfo.epochs_output, logInfo.epochs_candidate, ...
+        logInfo.max_epochs_output, logInfo.max_epochs_candidate, ...
         logInfo.hidden_units, logInfo.regressor_count);
     descriptor = strrep(descriptor,'.','p');
     descriptor = regexprep(descriptor,'[^A-Za-z0-9_-]','_');
@@ -432,8 +491,23 @@ function logFilePath = writeParameterLog(config, logInfo)
     end
 
     fileStamp = datestr(now,'yyyymmdd_HHMMSS');
-    fileName = sprintf('%s_%s.log', descriptor, fileStamp);
-    logFilePath = fullfile(scriptDir, fileName);
+    runFolderName = sprintf('%s_%s', descriptor, fileStamp);
+    runFolderPath = fullfile(scriptDir, runFolderName);
+    if exist(runFolderPath,'dir') == 0
+        [mkStatus, mkMsg] = mkdir(runFolderPath);
+        if ~mkStatus
+            warning('Could not create log folder %s (%s). Falling back to script directory.', runFolderPath, mkMsg);
+            runFolderPath = scriptDir;
+        end
+    end
+
+    runFolderDisplay = runFolderName;
+    if strcmp(runFolderPath, scriptDir)
+        runFolderDisplay = '[scriptDir]';
+    end
+
+    logFileName = sprintf('%s.log', runFolderName);
+    logFilePath = fullfile(runFolderPath, logFileName);
     fid = fopen(logFilePath,'w');
     if fid == -1
         warning('Could not create parameter log at %s', logFilePath);
@@ -443,25 +517,86 @@ function logFilePath = writeParameterLog(config, logInfo)
 
     fprintf(fid, 'CCNN Parameter Log\n');
     fprintf(fid, 'Created      : %s\n', timestampStr);
-    fprintf(fid, 'Script       : %s.m\n\n', scriptBase);
+    fprintf(fid, 'Script       : %s.m\n', scriptBase);
+    fprintf(fid, 'Run folder   : %s\n\n', runFolderDisplay);
 
-    summaryLine = sprintf('eta_out=%.4f | eta_cand=%.4f | epoch_out=%d | epoch_cand=%d | hidden=%d/%d | regressors=%d', ...
+    summaryLine = sprintf('eta_out=%.4f | eta_cand=%.4f | output_epochs=%d/%d | hidden=%d/%d | regressors=%d | cand_runs=%d', ...
         logInfo.eta_output, logInfo.eta_candidate, ...
-        logInfo.epochs_output, logInfo.epochs_candidate, ...
+        logInfo.output_epochs_used, logInfo.max_epochs_output, ...
         logInfo.hidden_units, logInfo.max_hidden_units, ...
-        logInfo.regressor_count);
+        logInfo.regressor_count, logInfo.candidate_runs);
     fprintf(fid, '%s\n', summaryLine);
+
+    candEpochStr = formatArrayField(logInfo.candidate_epochs_used);
+    fprintf(fid, 'Candidate epochs (per unit)  : %s\n', candEpochStr);
+
     fprintf(fid, 'N-step horizon : %d\n', logInfo.n_steps);
     fprintf(fid, 'Train MSE       : %.6g\n', logInfo.train_mse);
+    fprintf(fid, 'Train RMSE      : %.6g\n', logInfo.rmse_train);
     fprintf(fid, 'Train Fit (%%)   : %.2f\n', logInfo.fit_train);
+    fprintf(fid, 'Val   RMSE      : %.6g\n', logInfo.rmse_val);
     fprintf(fid, 'Val   Fit (%%)   : %.2f\n\n', logInfo.fit_val);
 
     fprintf(fid, 'Regressors.u : %s\n', mat2str(logInfo.regressors_u));
     fprintf(fid, 'Regressors.y : %s\n', mat2str(logInfo.regressors_y));
     fprintf(fid, 'Norm method  : %s\n', config.norm_method);
+    fprintf(fid, 'Activation   : %s\n', logInfo.activation);
     fprintf(fid, 'Target MSE   : %.6g\n', config.model.target_mse);
 
     fclose(fid);
+end
+
+function outStr = formatArrayField(values)
+    if isempty(values)
+        outStr = '[]';
+    else
+        outStr = mat2str(values);
+    end
+end
+
+function batchSize = resolveBatchSize(config, fieldName, numSamples)
+    batchSize = numSamples;
+    if isfield(config, 'training') && isfield(config.training, fieldName)
+        candidateSize = config.training.(fieldName);
+        if isnumeric(candidateSize) && candidateSize > 0
+            batchSize = min(numSamples, max(1, round(candidateSize)));
+        end
+    end
+end
+
+function batches = buildMiniBatchOrder(numSamples, batchSize)
+    if batchSize >= numSamples
+        batches = {1:numSamples};
+        return;
+    end
+    order = randperm(numSamples);
+    numBatches = ceil(numSamples / batchSize);
+    batches = cell(numBatches,1);
+    for k=1:numBatches
+        idxStart = (k-1)*batchSize + 1;
+        idxEnd = min(k*batchSize, numSamples);
+        batches{k} = order(idxStart:idxEnd);
+    end
+end
+
+function [plotHandle, figHandle] = updateLossFigure(plotHandle, figHandle, mse_hist)
+    xVals = 0:numel(mse_hist)-1;
+    if isempty(figHandle) || ~ishandle(figHandle)
+        figHandle = figure('Name','Train MSE vs Hidden Units','Color','w');
+    else
+        figure(figHandle);
+    end
+    if isempty(plotHandle) || ~isvalid(plotHandle)
+        clf(figHandle);
+        plotHandle = plot(xVals, mse_hist, '-o', 'LineWidth', 1.4);
+        grid on;
+        xlabel('Hidden Units');
+        ylabel('Train MSE');
+        title('Train MSE vs Hidden Units');
+    else
+        set(plotHandle, 'XData', xVals, 'YData', mse_hist);
+    end
+    drawnow;
 end
 
 function savedPaths = saveFitFigures(logFilePath, figMap)
@@ -519,8 +654,17 @@ function appendFigureInfoToLog(logFilePath, savedPaths)
         return;
     end
     fprintf(fid, '\nSaved figure files:\n');
+    [logDir, ~, ~] = fileparts(logFilePath);
     for i = 1:numel(savedPaths)
-        fprintf(fid, ' - %s\n', savedPaths{i});
+        relPath = savedPaths{i};
+        if isstring(relPath)
+            relPath = relPath{1};
+        end
+        prefix = [logDir filesep];
+        if strncmp(relPath, prefix, numel(prefix))
+            relPath = relPath(numel(prefix)+1:end);
+        end
+        fprintf(fid, ' - %s\n', relPath);
     end
     fclose(fid);
 end

@@ -27,7 +27,7 @@ config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
-config.model.activation = 'sigmoid';
+config.model.activation = 'tanh';
 config.model.max_hidden_units = 15;
 config.model.target_mse = 5e-5;
 config.model.min_mse_improvement = 1e-6; % early stop threshold
@@ -37,7 +37,7 @@ config.model.max_epochs_output = 100;
 config.model.eta_output = 0.008;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.05;
-config.model.plateau_min_delta = 1e-4;   % treat as plateau if loss/metric improves below this
+config.model.plateau_min_delta = 0;   % treat as plateau if loss/metric improves below this
 config.model.plateau_patience = 10;      % stop after this many stagnant epochs
 
 config.training = struct();
@@ -142,9 +142,14 @@ Yhat_va = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, g, config);
 Yhat_tr = Yhat_tr(2:end) * norm_stats.y_std + norm_stats.y_mu;
 Yhat_va = Yhat_va(2:end) * norm_stats.y_std + norm_stats.y_mu;
 
-fit_tr = fitPercent(Ytr_raw(2:end), Yhat_tr);
-fit_va = fitPercent(Yva_raw(2:end), Yhat_va);
-fprintf('\nTrain Fit: %.2f%% | Val Fit: %.2f%%\n', fit_tr, fit_va);
+target_tr = Ytr_raw(2:end);
+target_va = Yva_raw(2:end);
+rmse_tr = sqrt(mean((target_tr - Yhat_tr).^2));
+rmse_va = sqrt(mean((target_va - Yhat_va).^2));
+fit_tr = fitPercent(target_tr, Yhat_tr);
+fit_va = fitPercent(target_va, Yhat_va);
+fprintf('\nTrain Fit: %.2f%% | Train RMSE: %.4f\n', fit_tr, rmse_tr);
+fprintf('Val   Fit: %.2f%% | Val   RMSE: %.4f\n', fit_va, rmse_va);
 
 % Persist key hyperparameters so manual tweaks are traceable.
 logInfo = struct();
@@ -168,6 +173,8 @@ logInfo.n_steps = Npred;
 logInfo.train_mse = current_mse;
 logInfo.fit_train = fit_tr;
 logInfo.fit_val = fit_va;
+logInfo.rmse_train = rmse_tr;
+logInfo.rmse_val = rmse_va;
 logInfo.activation = config.model.activation;
 logFilePath = writeParameterLog(config, logInfo);
 if ~isempty(logFilePath)
@@ -176,14 +183,14 @@ end
 
 % Plots (use filtered raw data loaded earlier)
 figTrain = figure('Name','TRAIN - Full Recursive','Color','w');
-plot(Ytr_raw(2:end),'k','LineWidth',1.4); hold on;
+plot(target_tr,'k','LineWidth',1.4); hold on;
 plot(Yhat_tr,'b--','LineWidth',1.2); grid on;
-title(sprintf('TRAIN | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_tr)); legend('True','CCNN');
+title(sprintf('TRAIN | Hidden=%d | Fit=%.2f%% | RMSE=%.4f', numel(W_hidden), fit_tr, rmse_tr)); legend('True','CCNN');
 
 figVal = figure('Name','VAL - Full Recursive','Color','w');
-plot(Yva_raw(2:end),'k','LineWidth',1.4); hold on;
+plot(target_va,'k','LineWidth',1.4); hold on;
 plot(Yhat_va,'r--','LineWidth',1.2); grid on;
-title(sprintf('VAL | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_va)); legend('True','CCNN');
+title(sprintf('VAL | Hidden=%d | Fit=%.2f%% | RMSE=%.4f', numel(W_hidden), fit_va, rmse_va)); legend('True','CCNN');
 
 savedFigurePaths = saveFitFigures(logFilePath, struct('train', figTrain, 'val', figVal));
 if ~isempty(savedFigurePaths) && ~isempty(logFilePath)
@@ -419,7 +426,7 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     % use l2loss with explicit DataFormat
     Yvec = reshape(Y,1,[]);
     Tvec = reshape(T,1,[]);
-    mse = gather(extractdata(sqrt(l2loss(Yvec, Tvec, 'DataFormat', 'CB')));
+    mse = gather(extractdata(l2loss(Yvec, Tvec, 'DataFormat', 'CB')));
 end
 
 function [L,grad] = loss_output_traj(w, X0, U, T, W_hidden, g, config)
@@ -577,7 +584,9 @@ function logFilePath = writeParameterLog(config, logInfo)
 
     fprintf(fid, 'N-step horizon : %d\n', logInfo.n_steps);
     fprintf(fid, 'Train MSE       : %.6g\n', logInfo.train_mse);
+    fprintf(fid, 'Train RMSE      : %.6g\n', logInfo.rmse_train);
     fprintf(fid, 'Train Fit (%%)   : %.2f\n', logInfo.fit_train);
+    fprintf(fid, 'Val   RMSE      : %.6g\n', logInfo.rmse_val);
     fprintf(fid, 'Val   Fit (%%)   : %.2f\n\n', logInfo.fit_val);
 
     fprintf(fid, 'Regressors.u : %s\n', mat2str(logInfo.regressors_u));

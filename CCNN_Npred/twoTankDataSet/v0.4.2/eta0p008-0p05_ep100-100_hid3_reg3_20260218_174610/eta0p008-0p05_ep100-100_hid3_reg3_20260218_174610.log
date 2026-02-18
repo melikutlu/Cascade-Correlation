@@ -1,0 +1,27 @@
+CCNN Parameter Log
+Created      : 2026-02-18 17:46:10
+Script       : Npred_MiniBatch_Adam.m
+Run folder   : eta0p008-0p05_ep100-100_hid3_reg3_20260218_174610
+
+eta_out=0.0080 | eta_cand=0.0500 | output_epochs=18/100 | hidden=3/15 | regressors=3 | cand_runs=4
+Output plateau epoch : 18
+Candidate epochs (per unit)  : [100 20 100 100]
+Candidate plateau epochs      : [NaN 20 NaN NaN]
+N-step horizon : 20
+Train MSE       : 0.00503973
+Train RMSE      : 0.0360984
+Train Fit (%)   : 78.19
+Val   RMSE      : 0.0475217
+Val   Fit (%)   : 75.87
+
+Regressors.u : 0
+Regressors.y : [1 2]
+Norm method  : ZScore
+Activation   : tanh
+Target MSE   : 5e-05
+Plateau min delta : 0.0001
+Plateau patience  : 10
+
+Saved figure files:
+ - eta0p008-0p05_ep100-100_hid3_reg3_20260218_174610_train_fit.png
+ - eta0p008-0p05_ep100-100_hid3_reg3_20260218_174610_val_fit.png

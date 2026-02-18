@@ -27,7 +27,7 @@ config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
-config.model.activation = 'tanh';
+config.model.activation = 'sigmoid';
 config.model.max_hidden_units = 15;
 config.model.target_mse = 5e-5;
 config.model.min_mse_improvement = 1e-6; % early stop threshold
@@ -419,7 +419,7 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     % use l2loss with explicit DataFormat
     Yvec = reshape(Y,1,[]);
     Tvec = reshape(T,1,[]);
-    mse = gather(extractdata(l2loss(Yvec, Tvec, 'DataFormat', 'CB')));
+    mse = gather(extractdata(sqrt(l2loss(Yvec, Tvec, 'DataFormat', 'CB')));
 end
 
 function [L,grad] = loss_output_traj(w, X0, U, T, W_hidden, g, config)

@@ -1,0 +1,14 @@
+CCNN Parameter Log
+Created      : 2026-02-13 13:22:21
+Script       : CCNN_Npred.m
+
+eta_out=0.2000 | eta_cand=0.1000 | epoch_out=10 | epoch_cand=10 | hidden=0/10 | regressors=6
+N-step horizon : 1496
+Train MSE       : 0.435285
+Train Fit (%)   : 34.39
+Val   Fit (%)   : 49.03
+
+Regressors.u : [0 1 2]
+Regressors.y : [1 2 3]
+Norm method  : ZScore
+Target MSE   : 5e-05

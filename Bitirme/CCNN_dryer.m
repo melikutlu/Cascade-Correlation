@@ -32,7 +32,7 @@ config.regressors.type = 'narx';     % 'narx' veya 'custom'
 config.regressors.na = 1;            % Çıkış gecikme sayısı (y(k-1)...y(k-na))
 config.regressors.nb = 1;            % Giriş gecikme sayısı (u(k-nk)...u(k-nk-nb+1))
 config.regressors.nk = 0;            % Giriş gecikmesi (delay)
-config.regressors.include_bias = false;
+config.regressors.include_bias = true;
 
 % ==== ÖZEL GECİKMELER İÇİN (type='custom' ise) ====
 % config.regressors.input_lags = [1, 2, 3];
@@ -319,31 +319,31 @@ end
 
 function [U_train, Y_train, U_val, Y_val] = loadTwotankData(config)
     % Twotankdata için özel yükleyici
-    load twotankdata;
+    
+    load dryer2; 
 
-    % Use raw data as-is (no filtering, no warmup trimming)
-    u = u(:);
-    y = y(:);
+            z_full = iddata(y2, u2, config.data.twotank.sampling_time);
+        
+        % Veriyi böl
+        N_total = length(z_full.y);
+        train_end = floor(N_total * config.data.train_ratio);
+        val_end = train_end + floor(N_total * config.data.val_ratio);
+                
 
-    N_total = length(u);
-    train_end = floor(N_total * config.data.train_ratio);
-    val_end = train_end + floor(N_total * config.data.val_ratio);
+            % Train
+            z1 = z_full(1:train_end);
+            z1f = idfilt(z1, 3, config.data.twotank.filter_cutoff);
+            z1f = z1f(config.data.twotank.warmup_samples:end);
+            U_train = z1f.u;
+            Y_train = z1f.y;
 
-    if config.data.train_ratio > 0
-        U_train = u(1:train_end);
-        Y_train = y(1:train_end);
-    else
-        U_train = [];
-        Y_train = [];
-    end
+            % Val
+            z2 = z_full(train_end+1:val_end);
+            z2f = idfilt(z2, 3, config.data.twotank.filter_cutoff);
+            z2f = z2f(config.data.twotank.warmup_samples:end);
+            U_val = z2f.u;
+            Y_val = z2f.y;
 
-    if config.data.val_ratio > 0
-        U_val = u(train_end+1:val_end);
-        Y_val = y(train_end+1:val_end);
-    else
-        U_val = [];
-        Y_val = [];
-    end
 end
 
 function [U_train, Y_train, U_val, Y_val] = loadCSVData(config)
@@ -466,7 +466,7 @@ function [U_train, Y_train, U_val, Y_val] = loadFromWorkspace(config)
     Y_val = Y_all(train_end+1:val_end, :);
 end
 
-function [X_bias, T, reg_info] = createRegrDessorsDynamic(U, Y, config)
+function [X_bias, T, reg_info] = createRegressorsDynamic(U, Y, config)
     % Dinamik regresör matrisi oluşturur
     % İstek: u(k) ve y(k-1) verildiğinde T(k) = y(k) olmalı.
     % Yani Target, regresördeki y değerinin "bir sonraki" değeri olmalıdır.

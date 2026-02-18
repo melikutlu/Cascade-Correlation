@@ -1,0 +1,24 @@
+CCNN Parameter Log
+Created      : 2026-02-14 22:10:33
+Script       : CCNN_Npred.m
+Run folder   : eta0p05-0p03_ep100-100_hid1_reg4_20260214_221033
+
+eta_out=0.0500 | eta_cand=0.0300 | output_epochs=11/100 | hidden=1/10 | regressors=4 | cand_runs=2
+Output plateau epoch : 11
+Candidate epochs (per unit)  : [11 31]
+Candidate plateau epochs      : [11 31]
+N-step horizon : 1497
+Train MSE       : 0.396788
+Train Fit (%)   : 37.09
+Val   Fit (%)   : 58.31
+
+Regressors.u : [0 1]
+Regressors.y : [1 2]
+Norm method  : ZScore
+Target MSE   : 5e-05
+Plateau min delta : 0.0001
+Plateau patience  : 10
+
+Saved figure files:
+ - eta0p05-0p03_ep100-100_hid1_reg4_20260214_221033_train_fit.png
+ - eta0p05-0p03_ep100-100_hid1_reg4_20260214_221033_val_fit.png

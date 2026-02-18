@@ -27,10 +27,10 @@ config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
-config.model.activation = 'tanh';
+config.model.activation = 'sigmoid';
 config.model.max_hidden_units = 15;
 config.model.target_mse = 5e-5;
-config.model.min_mse_improvement = 1e-6; % early stop threshold
+config.model.min_mse_improvement = 5e-1; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
@@ -144,7 +144,9 @@ Yhat_va = Yhat_va(2:end) * norm_stats.y_std + norm_stats.y_mu;
 
 fit_tr = fitPercent(Ytr_raw(2:end), Yhat_tr);
 fit_va = fitPercent(Yva_raw(2:end), Yhat_va);
-fprintf('\nTrain Fit: %.2f%% | Val Fit: %.2f%%\n', fit_tr, fit_va);
+rmse_tr = sqrt(mean((Ytr_raw(2:end) - Yhat_tr).^2));
+rmse_va = sqrt(mean((Yva_raw(2:end) - Yhat_va).^2));
+fprintf('\nTrain Fit: %.2f%% (RMSE=%.4g) | Val Fit: %.2f%% (RMSE=%.4g)\n', fit_tr, rmse_tr, fit_va, rmse_va);
 
 % Persist key hyperparameters so manual tweaks are traceable.
 logInfo = struct();
@@ -168,6 +170,8 @@ logInfo.n_steps = Npred;
 logInfo.train_mse = current_mse;
 logInfo.fit_train = fit_tr;
 logInfo.fit_val = fit_va;
+logInfo.rmse_train = rmse_tr;
+logInfo.rmse_val = rmse_va;
 logInfo.activation = config.model.activation;
 logFilePath = writeParameterLog(config, logInfo);
 if ~isempty(logFilePath)
@@ -419,14 +423,14 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     % use l2loss with explicit DataFormat
     Yvec = reshape(Y,1,[]);
     Tvec = reshape(T,1,[]);
-    mse = gather(extractdata(l2loss(Yvec, Tvec, 'DataFormat', 'CB')));
+    mse = gather(extractdata(sqrt(l2loss(Yvec, Tvec, 'DataFormat', 'CB'))));
 end
 
 function [L,grad] = loss_output_traj(w, X0, U, T, W_hidden, g, config)
     Y = forwardModelTrajectory(X0, U, W_hidden, g, w, config);
     Yvec = reshape(Y,1,[]);
     Tvec = reshape(T,1,[]);
-    L = l2loss(Yvec, Tvec, 'DataFormat', 'CB');
+    L = sqrt(l2loss(Yvec, Tvec, 'DataFormat', 'CB'));
     grad = dlgradient(L, w);
 end
 
@@ -576,7 +580,9 @@ function logFilePath = writeParameterLog(config, logInfo)
     fprintf(fid, 'Candidate plateau epochs      : %s\n', candPlateauStr);
 
     fprintf(fid, 'N-step horizon : %d\n', logInfo.n_steps);
-    fprintf(fid, 'Train MSE       : %.6g\n', logInfo.train_mse);
+    fprintf(fid, 'Train obj RMSE  : %.6g\n', logInfo.train_mse);
+    fprintf(fid, 'Train series RMSE : %.6g\n', logInfo.rmse_train);
+    fprintf(fid, 'Val   RMSE      : %.6g\n', logInfo.rmse_val);
     fprintf(fid, 'Train Fit (%%)   : %.2f\n', logInfo.fit_train);
     fprintf(fid, 'Val   Fit (%%)   : %.2f\n\n', logInfo.fit_val);
 

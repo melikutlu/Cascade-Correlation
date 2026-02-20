@@ -1,4 +1,4 @@
-% CCNN_Npred.m
+% % CCNN_Npred.m
 % CCNN where candidate units are trained to MAXIMIZE N-step residual correlation
 % Model and candidate training both operate on N-step trajectory predictions.
 
@@ -30,15 +30,23 @@ config.regressors.include_bias = false;
 config.model.activation = 'sigmoid';
 config.model.max_hidden_units = 15;
 config.model.target_mse = 5e-5;
-config.model.min_mse_improvement = 5e-1; % early stop threshold
+config.model.min_mse_improvement = 5e-4; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
 config.model.eta_output = 0.008;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.05;
-config.model.plateau_min_delta = 1e-4;   % treat as plateau if loss/metric improves below this
-config.model.plateau_patience = 10;      % stop after this many stagnant epochs
+config.model.plateau_min_delta = 0;   % treat as plateau if loss/metric improves below this
+config.model.plateau_patience = 20;      % stop after this many stagnant epochs
+
+% moving-average early-stop (per-epoch error history)
+% When enabled, the trainer will compute the mean of the last
+% `moving_avg_window` epoch errors and stop if that mean falls below
+% `moving_avg_threshold`.
+config.model.use_moving_avg_stop = false;
+config.model.moving_avg_window = 20;      % number of most-recent epochs to average
+config.model.moving_avg_threshold = config.model.target_mse; % default threshold (can override)
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
@@ -83,6 +91,11 @@ if ~isnan(outputTrainInfo.plateau_epoch)
 else
     fprintf('Output layer used %d/%d epochs (no plateau).\n', ...
         outputTrainInfo.epochs_run, config.model.max_epochs_output);
+end
+
+% print whether training stopped due to moving-average stop (if present)
+if isfield(outputTrainInfo,'stop_by_moving_avg')
+    fprintf('Output train stopped by moving-avg: %d\n', double(outputTrainInfo.stop_by_moving_avg));
 end
 
 mse_hist = current_mse;
@@ -386,6 +399,7 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     plateauEpoch = NaN;
     minDelta = config.model.plateau_min_delta;
     patience = config.model.plateau_patience;
+    stopByMavg = false;
 
     numSamples = size(X0,1);
     batchSize = resolveBatchSize(config, 'batch_size_output', numSamples);
@@ -404,6 +418,20 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
         end
 
         loss_hist(ep) = epochLoss;
+        % moving-average early-stop check (user-configurable)
+        if isfield(config.model,'use_moving_avg_stop') && config.model.use_moving_avg_stop
+            win = max(1, round(config.model.moving_avg_window));
+            th = config.model.moving_avg_threshold;
+            % only evaluate moving-average once we have at least 'win' epochs
+            if ep >= win
+                mavg = mean(loss_hist(ep-win+1:ep));
+                if mavg < th
+                    plateauEpoch = ep;
+                    stopByMavg = true;
+                    break;
+                end
+            end
+        end
         if bestLoss - epochLoss > minDelta
             bestLoss = epochLoss;
             epochsSinceBest = 0;
@@ -418,7 +446,7 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     w_o = extractdata(w_o);
     epochs_run = ep;
     loss_hist = loss_hist(1:epochs_run);
-    info = struct('epochs_run', epochs_run, 'plateau_epoch', plateauEpoch, 'loss_history', loss_hist);
+    info = struct('epochs_run', epochs_run, 'plateau_epoch', plateauEpoch, 'loss_history', loss_hist, 'stop_by_moving_avg', stopByMavg);
     Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
     % use l2loss with explicit DataFormat
     Yvec = reshape(Y,1,[]);

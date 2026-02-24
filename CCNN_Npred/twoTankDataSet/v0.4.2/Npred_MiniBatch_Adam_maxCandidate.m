@@ -28,7 +28,7 @@ config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-config.model.max_hidden_units = 8;
+config.model.max_hidden_units = 1;
 config.model.target_mse = 5e-5;
 config.model.min_mse_improvement = -inf; % early stop threshold
 
@@ -38,7 +38,7 @@ config.model.eta_output = 0.008;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.05;
 config.model.plateau_min_delta = 0;   % treat as plateau if loss/metric improves below this
-config.model.plateau_patience = +inf;      % stop after this many stagnant epochs
+config.model.plateau_patience = 100;      % stop after this many stagnant epochs
 
 % moving-average early-stop (per-epoch error history)
 % When enabled, the trainer will compute the mean of the last

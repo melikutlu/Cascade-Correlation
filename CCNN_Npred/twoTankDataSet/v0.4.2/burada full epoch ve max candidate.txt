@@ -1,0 +1,2 @@
+burada full epoch ve max candidate testleri yapıldı 
+amaç full candidate koşunca bir azalma var mı gözlemlemek

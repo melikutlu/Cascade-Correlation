@@ -30,23 +30,19 @@ config.regressors.include_bias = false;
 config.model.activation = 'tanh';
 config.model.max_hidden_units = 10;
 config.model.target_mse = 5e-5;
-config.model.min_mse_improvement = -inf; % early stop threshold
+config.model.min_mse_improvement = 1e-6; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
 config.model.eta_output = 0.008;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.05;
-config.model.plateau_min_delta = 0;   % treat as plateau if loss/metric improves below this
-config.model.plateau_patience = inf;      % stop after this many stagnant epochs
+config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
-% moving-average early-stop (per-epoch error history)
-% When enabled, the trainer will compute the mean of the last
-% `moving_avg_window` epoch errors and stop if that mean falls below
-% `moving_avg_threshold`.
-config.model.use_moving_avg_stop = true;
-config.model.moving_avg_window = 20;      % number of most-recent epochs to average
-config.model.moving_avg_threshold = config.model.target_mse; % default threshold (can override)
+% Moving-average plateau stop: after each epoch, compare current loss/metric
+% against the mean of the previous `moving_avg_window` epochs.
+% If improvement <= plateau_min_delta, training stops (plateau detected).
+config.model.moving_avg_window = 20;      % number of previous epochs to average
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
@@ -173,7 +169,7 @@ logInfo.candidate_epochs_used = candidateEpochHistory;
 logInfo.candidate_plateau_epochs = candidatePlateauHistory;
 logInfo.candidate_runs = numel(candidateEpochHistory);
 logInfo.plateau_min_delta = config.model.plateau_min_delta;
-logInfo.plateau_patience = config.model.plateau_patience;
+logInfo.moving_avg_window = config.model.moving_avg_window;
 logInfo.hidden_units = numel(W_hidden);
 logInfo.max_hidden_units = config.model.max_hidden_units;
 logInfo.regressor_count = numel(config.regressors.u) + numel(config.regressors.y);
@@ -228,10 +224,9 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
     avgG=[]; avgGSq=[]; it=0; best_metric = -Inf; best_w = extractdata(w_h);
     maxEpochs = config.model.max_epochs_candidate;
     metric_hist = zeros(maxEpochs,1);
-    epochsSinceBest = 0;
     plateauEpoch = NaN;
     minDelta = config.model.plateau_min_delta;
-    patience = config.model.plateau_patience;
+    window = max(1, round(config.model.moving_avg_window));
 
     numSamples = size(X0,1);
     batchSize = resolveBatchSize(config, 'batch_size_candidate', numSamples);
@@ -248,22 +243,17 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
 
         metricVal = evaluateCandidateMetric(w_h, X0_d, U_d, T_d, W_hidden, w_o_d, g, config);
         metric_hist(ep) = metricVal;
-        if metricVal - best_metric > minDelta
+        if metricVal > best_metric
             best_metric = metricVal;
             best_w = extractdata(w_h);
-            epochsSinceBest = 0;
-        else
-            epochsSinceBest = epochsSinceBest + 1;
-            if epochsSinceBest >= patience
+        end
+        if ep > window
+            mavg = mean(metric_hist(ep-window:ep-1));
+            if metricVal - mavg <= minDelta
                 plateauEpoch = ep;
                 break;
             end
         end
-    end
-
-     % Eğer plateau nedeniyle durmadıysak (tüm epoch'lar koşulduysa)
-    if isnan(plateauEpoch)
-        plateauEpoch = ep;  % veya maxEpochs (ep = maxEpochs olacak)
     end
 
     w_h = best_w;
@@ -407,11 +397,9 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     avgG=[]; avgGSq=[]; it=0;
     maxEpochs = config.model.max_epochs_output;
     loss_hist = zeros(maxEpochs,1);
-    bestLoss = inf;
-    epochsSinceBest = 0;
     plateauEpoch = NaN;
     minDelta = config.model.plateau_min_delta;
-    patience = config.model.plateau_patience;
+    window = max(1, round(config.model.moving_avg_window));
     stopByMavg = false;
 
     numSamples = size(X0,1);
@@ -431,27 +419,11 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
         end
 
         loss_hist(ep) = epochLoss;
-        % moving-average early-stop check (user-configurable)
-        if isfield(config.model,'use_moving_avg_stop') && config.model.use_moving_avg_stop
-            win = max(1, round(config.model.moving_avg_window));
-            th = config.model.moving_avg_threshold;
-            % only evaluate moving-average once we have at least 'win' epochs
-            if ep >= win
-                mavg = mean(loss_hist(ep-win+1:ep));
-                if mavg < th
-                    plateauEpoch = ep;
-                    stopByMavg = true;
-                    break;
-                end
-            end
-        end
-        if bestLoss - epochLoss > minDelta
-            bestLoss = epochLoss;
-            epochsSinceBest = 0;
-        else
-            epochsSinceBest = epochsSinceBest + 1;
-            if epochsSinceBest >= patience
+        if ep > window
+            mavg = mean(loss_hist(ep-window:ep-1));
+            if mavg - epochLoss <= minDelta
                 plateauEpoch = ep;
+                stopByMavg = true;
                 break;
             end
         end
@@ -643,8 +615,8 @@ function logFilePath = writeParameterLog(config, logInfo)
     fprintf(fid, 'Norm method  : %s\n', config.norm_method);
     fprintf(fid, 'Activation   : %s\n', logInfo.activation);
     fprintf(fid, 'Target MSE   : %.6g\n', config.model.target_mse);
-    fprintf(fid, 'Plateau min delta : %.3g\n', logInfo.plateau_min_delta);
-    fprintf(fid, 'Plateau patience  : %d\n', logInfo.plateau_patience);
+    fprintf(fid, 'Plateau min delta  : %.3g\n', logInfo.plateau_min_delta);
+    fprintf(fid, 'Moving avg window  : %d\n', logInfo.moving_avg_window);
 
     fclose(fid);
 end

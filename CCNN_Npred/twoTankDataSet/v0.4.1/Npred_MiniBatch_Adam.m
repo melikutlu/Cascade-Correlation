@@ -22,21 +22,20 @@ config.prediction.n_steps = 20; % default N-step horizon (override auto when dis
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [0 1]; % example: u(t), u(t-1)
-config.regressors.y = [1 2]; % example: y(t-1), y(t-2)
+config.regressors.u = [0]; % example: u(t), u(t-1)
+config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-<<<<<<< HEAD
-config.model.max_hidden_units = 15;
+
+config.model.max_hidden_units = 10;
 config.model.target_mse = 5e-5;
 config.model.min_mse_improvement = 1e-6; % early stop threshold
-=======
+
 config.model.max_hidden_units = 5;
 config.model.target_mse = 5e-5;
 config.model.min_mse_improvement = 1e-5; % early stop threshold
->>>>>>> e37bcece5f0f5eb79128b19a0eff5d62c38404c3
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;

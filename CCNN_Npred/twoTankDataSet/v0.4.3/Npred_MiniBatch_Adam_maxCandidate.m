@@ -22,31 +22,27 @@ config.prediction.n_steps = 20; % default N-step horizon (override auto when dis
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [0]; % example: u(t), u(t-1)
-config.regressors.y = [1]; % example: y(t-1), y(t-2)
+config.regressors.u = [0 1]; % example: u(t), u(t-1)
+config.regressors.y = [1 2]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
 config.model.max_hidden_units = 10;
-config.model.target_mse = 5e-5;
-config.model.min_mse_improvement = -inf; % early stop threshold
+config.model.target_mse = 1e-3;  % true MSE — adjust if needed
+config.model.min_mse_improvement = 1e-6; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
 config.model.eta_output = 0.008;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.05;
-config.model.plateau_min_delta = 0;   % treat as plateau if loss/metric improves below this
-config.model.plateau_patience = inf;      % stop after this many stagnant epochs
+config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
-% moving-average early-stop (per-epoch error history)
-% When enabled, the trainer will compute the mean of the last
-% `moving_avg_window` epoch errors and stop if that mean falls below
-% `moving_avg_threshold`.
-config.model.use_moving_avg_stop = true;
-config.model.moving_avg_window = 20;      % number of most-recent epochs to average
-config.model.moving_avg_threshold = config.model.target_mse; % default threshold (can override)
+% Moving-average plateau stop: after each epoch, compare current loss/metric
+% against the mean of the previous `moving_avg_window` epochs.
+% If improvement <= plateau_min_delta, training stops (plateau detected).
+config.model.moving_avg_window = 20;      % number of previous epochs to average
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
@@ -113,7 +109,7 @@ while current_mse > config.model.target_mse && numel(W_hidden) < config.model.ma
     % train candidate to maximize correlation with residual (N-step)
     [w_h, cand_metric, candInfo] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
     candidateEpochHistory(end+1) = candInfo.epochs_run; %#ok<AGROW>
-    candidatePlateauHistory(end+1) = candInfo.plateau_epoch; %#ok<AGROW>7opğ
+    candidatePlateauHistory(end+1) = candInfo.plateau_epoch; %#ok<AGROW>
     fprintf('Candidate #%d | corr^2 (on train residual): %.6g\n', h, cand_metric);
     if ~isnan(candInfo.plateau_epoch)
         fprintf('Candidate #%d plateau at epoch %d (ran %d/%d epochs).\n', ...
@@ -173,7 +169,7 @@ logInfo.candidate_epochs_used = candidateEpochHistory;
 logInfo.candidate_plateau_epochs = candidatePlateauHistory;
 logInfo.candidate_runs = numel(candidateEpochHistory);
 logInfo.plateau_min_delta = config.model.plateau_min_delta;
-logInfo.plateau_patience = config.model.plateau_patience;
+logInfo.moving_avg_window = config.model.moving_avg_window;
 logInfo.hidden_units = numel(W_hidden);
 logInfo.max_hidden_units = config.model.max_hidden_units;
 logInfo.regressor_count = numel(config.regressors.u) + numel(config.regressors.y);
@@ -228,10 +224,9 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
     avgG=[]; avgGSq=[]; it=0; best_metric = -Inf; best_w = extractdata(w_h);
     maxEpochs = config.model.max_epochs_candidate;
     metric_hist = zeros(maxEpochs,1);
-    epochsSinceBest = 0;
     plateauEpoch = NaN;
     minDelta = config.model.plateau_min_delta;
-    patience = config.model.plateau_patience;
+    window = max(1, round(config.model.moving_avg_window));
 
     numSamples = size(X0,1);
     batchSize = resolveBatchSize(config, 'batch_size_candidate', numSamples);
@@ -248,22 +243,17 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
 
         metricVal = evaluateCandidateMetric(w_h, X0_d, U_d, T_d, W_hidden, w_o_d, g, config);
         metric_hist(ep) = metricVal;
-        if metricVal - best_metric > minDelta
+        if metricVal > best_metric
             best_metric = metricVal;
             best_w = extractdata(w_h);
-            epochsSinceBest = 0;
-        else
-            epochsSinceBest = epochsSinceBest + 1;
-            if epochsSinceBest >= patience
+        end
+        if ep > window
+            mavg = mean(metric_hist(ep-window:ep-1));
+            if metricVal - mavg <= minDelta
                 plateauEpoch = ep;
                 break;
             end
         end
-    end
-
-     % Eğer plateau nedeniyle durmadıysak (tüm epoch'lar koşulduysa)
-    if isnan(plateauEpoch)
-        plateauEpoch = ep;  % veya maxEpochs (ep = maxEpochs olacak)
     end
 
     w_h = best_w;
@@ -282,14 +272,55 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     Y_model = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
     R = T - Y_model; % residual (M x N)
 
-    % compute candidate activation v (M x N)
-    M = size(X0,1); 
+    % compute candidate activation v (M x N) using the same recursive
+    % y-feedback as forwardModelTrajectory so the regressors are consistent.
+    ulags = config.regressors.u(:)'; ylags = config.regressors.y(:)';
+    nu = numel(ulags); ny = numel(ylags);
+    M = size(X0,1);
     N = size(U,2);
     v = dlarray(zeros(M,N));
+
+    % Validate: shift-register yprev only works for consecutive lags [1,2,...,ny]
+    if ~isequal(ylags, 1:ny)
+        error('candidateCorrelationMetric: ylags must be consecutive integers [1,2,...,ny] (got [%s]).', num2str(ylags));
+    end
+    yprev = X0(:, nu+1:nu+ny); % initialise from X0 y-regressors — column j holds y(t-j)
+
     for t=1:N
-        % build regressor vector x_t for all M samples
-        x_t = buildRegressorRow(X0, U, t, W_hidden, g, config);
+        % u part
+        uvals = zeros(M, nu);
+        for j=1:nu
+            L = ulags(j);
+            if L==0
+                uvals(:,j) = U(:,t);
+            else
+                idx = t - L;
+                if idx >= 1
+                    uvals(:,j) = U(:, idx);
+                else
+                    uvals(:,j) = X0(:, j);
+                end
+            end
+        end
+        % y part: use recursively propagated model predictions
+        yvals = zeros(M, ny);
+        for j=1:ny
+            yvals(:,j) = yprev(:,j);
+        end
+        x_t = [uvals, yvals];
+        for h=1:numel(W_hidden)
+            x_t = [x_t, g(x_t * W_hidden{h})];
+        end
+        x_t = dlarray(x_t);
         v(:,t) = g(x_t * w_h);
+
+        % advance yprev with the current model prediction (same as forwardModelTrajectory)
+        y_t = Y_model(:,t);
+        if ny > 1
+            yprev = [y_t, yprev(:,1:ny-1)];
+        else
+            yprev = y_t;
+        end
     end
 
     % flatten and center
@@ -313,43 +344,6 @@ function [L, metric, grad] = loss_candidate_corr(w_h, X0, U, T, W_hidden, w_o, g
     grad = dlgradient(L, w_h);
 end
 
-function x = buildRegressorRow(X0, U, t, W_hidden, g, config)
-    % build row-level regressor matrix for all M samples at time t
-    ulags = config.regressors.u(:)';
-    ylags = config.regressors.y(:)';
-    nu = numel(ulags); ny = numel(ylags);
-    M = size(X0,1);
-
-    % u part
-    uvals = zeros(M, nu);
-    for j=1:nu
-        L = ulags(j);
-        if L==0
-            uvals(:,j) = U(:,t);
-        else
-            idx = t - L;
-            if idx >= 1
-                uvals(:,j) = U(:, idx);
-            else
-                uvals(:,j) = X0(:, j);
-            end
-        end
-    end
-
-    % y part (use initial regressor memory for out-of-range lags)
-    yvals = zeros(M, ny);
-    for j=1:ny
-        yvals(:,j) = X0(:, nu + j);
-    end
-
-    x = [uvals, yvals];
-    % append existing hidden activations computed from available regressors
-    for h=1:numel(W_hidden)
-        x = [x, g(x * W_hidden{h})];
-    end
-    x = dlarray(x);
-end
-
 function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
     % forward pass computing N-step outputs with current W_hidden and w_o (no candidate)
     M = size(X0,1); N = size(U,2);
@@ -360,8 +354,13 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
     ulags = config.regressors.u(:)'; ylags = config.regressors.y(:)';
     nu = numel(ulags); ny = numel(ylags);
 
+    % Validate: shift-register yprev only works for consecutive lags [1,2,...,ny]
+    if ~isequal(ylags, 1:ny)
+        error('forwardModelTrajectory: ylags must be consecutive integers [1,2,...,ny] (got [%s]). Non-consecutive lags require an extended y-history buffer not yet supported.', num2str(ylags));
+    end
+
     % For recursive predictions we maintain past y-values; start with X0's last y regressor column(s)
-    yprev = X0(:, nu+1:nu+ny); % M x ny
+    yprev = X0(:, nu+1:nu+ny); % M x ny — column j holds y(t-j)
 
     for t=1:N
         % build current regressor x for each sample
@@ -407,11 +406,9 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     avgG=[]; avgGSq=[]; it=0;
     maxEpochs = config.model.max_epochs_output;
     loss_hist = zeros(maxEpochs,1);
-    bestLoss = inf;
-    epochsSinceBest = 0;
     plateauEpoch = NaN;
     minDelta = config.model.plateau_min_delta;
-    patience = config.model.plateau_patience;
+    window = max(1, round(config.model.moving_avg_window));
     stopByMavg = false;
 
     numSamples = size(X0,1);
@@ -431,27 +428,11 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
         end
 
         loss_hist(ep) = epochLoss;
-        % moving-average early-stop check (user-configurable)
-        if isfield(config.model,'use_moving_avg_stop') && config.model.use_moving_avg_stop
-            win = max(1, round(config.model.moving_avg_window));
-            th = config.model.moving_avg_threshold;
-            % only evaluate moving-average once we have at least 'win' epochs
-            if ep >= win
-                mavg = mean(loss_hist(ep-win+1:ep));
-                if mavg < th
-                    plateauEpoch = ep;
-                    stopByMavg = true;
-                    break;
-                end
-            end
-        end
-        if bestLoss - epochLoss > minDelta
-            bestLoss = epochLoss;
-            epochsSinceBest = 0;
-        else
-            epochsSinceBest = epochsSinceBest + 1;
-            if epochsSinceBest >= patience
+        if ep > window
+            mavg = mean(loss_hist(ep-window:ep-1));
+            if mavg - epochLoss <= minDelta
                 plateauEpoch = ep;
+                stopByMavg = true;
                 break;
             end
         end
@@ -461,17 +442,16 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     loss_hist = loss_hist(1:epochs_run);
     info = struct('epochs_run', epochs_run, 'plateau_epoch', plateauEpoch, 'loss_history', loss_hist, 'stop_by_moving_avg', stopByMavg);
     Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
-    % use l2loss with explicit DataFormat
     Yvec = reshape(Y,1,[]);
     Tvec = reshape(T,1,[]);
-    mse = gather(extractdata(sqrt(l2loss(Yvec, Tvec, 'DataFormat', 'CB'))));
+    mse = gather(extractdata(l2loss(Yvec, Tvec, 'DataFormat', 'CB')));
 end
 
 function [L,grad] = loss_output_traj(w, X0, U, T, W_hidden, g, config)
     Y = forwardModelTrajectory(X0, U, W_hidden, g, w, config);
     Yvec = reshape(Y,1,[]);
     Tvec = reshape(T,1,[]);
-    L = sqrt(l2loss(Yvec, Tvec, 'DataFormat', 'CB'));
+    L = l2loss(Yvec, Tvec, 'DataFormat', 'CB');  % MSE
     grad = dlgradient(L, w);
 end
 
@@ -627,7 +607,7 @@ function logFilePath = writeParameterLog(config, logInfo)
     fprintf(fid, 'Candidate plateau epochs      : %s\n', candPlateauStr);
 
     fprintf(fid, 'N-step horizon : %d\n', logInfo.n_steps);
-    fprintf(fid, 'Train obj RMSE  : %.6g\n', logInfo.train_mse);
+    fprintf(fid, 'Train obj MSE  : %.6g\n', logInfo.train_mse);
     fprintf(fid, 'Train series RMSE : %.6g\n', logInfo.rmse_train);
     fprintf(fid, 'Val   RMSE      : %.6g\n', logInfo.rmse_val);
     fprintf(fid, 'Train Fit (%%)   : %.2f\n', logInfo.fit_train);
@@ -643,8 +623,8 @@ function logFilePath = writeParameterLog(config, logInfo)
     fprintf(fid, 'Norm method  : %s\n', config.norm_method);
     fprintf(fid, 'Activation   : %s\n', logInfo.activation);
     fprintf(fid, 'Target MSE   : %.6g\n', config.model.target_mse);
-    fprintf(fid, 'Plateau min delta : %.3g\n', logInfo.plateau_min_delta);
-    fprintf(fid, 'Plateau patience  : %d\n', logInfo.plateau_patience);
+    fprintf(fid, 'Plateau min delta  : %.3g\n', logInfo.plateau_min_delta);
+    fprintf(fid, 'Moving avg window  : %d\n', logInfo.moving_avg_window);
 
     fclose(fid);
 end

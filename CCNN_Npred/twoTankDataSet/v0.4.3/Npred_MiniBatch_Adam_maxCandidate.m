@@ -36,7 +36,7 @@ config.model.min_mse_improvement = 1e-6; % early stop threshold
 config.model.max_epochs_output = 100;
 config.model.eta_output = 0.008;
 config.model.max_epochs_candidate = 100;
-config.model.eta_candidate = 0.05;
+config.model.eta_candidate = 0.001;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
 % Moving-average plateau stop: after each epoch, compare current loss/metric
@@ -335,7 +335,9 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     denom = (sum(v_c.^2) + eps) .* (sum(r_c.^2) + eps);
     corr2 = (cov_vr.^2) ./ denom; % correlation squared (scalar)
 
-    metric = corr2;
+    %metric = corr2;
+    metric = cov_vr;   
+    %metric = (cov_vr.^2) ./ (sum(v_c.^2) + eps);  % sadece Var(v) ile normalize et
 end
 
 function [L, metric, grad] = loss_candidate_corr(w_h, X0, U, T, W_hidden, w_o, g, config)

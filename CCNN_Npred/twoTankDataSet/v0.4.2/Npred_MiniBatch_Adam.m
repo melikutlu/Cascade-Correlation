@@ -28,7 +28,7 @@ config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-config.model.max_hidden_units = 5;
+config.model.max_hidden_units = 15;
 config.model.target_mse = 5e-5;
 config.model.min_mse_improvement = 1e-6; % early stop threshold
 

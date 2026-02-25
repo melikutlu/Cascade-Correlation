@@ -28,14 +28,18 @@ config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
+<<<<<<< HEAD
+config.model.max_hidden_units = 0;
+=======
 config.model.max_hidden_units = 10;
+>>>>>>> e1ea5765ce1ff6c698b1e8fb1526491c517a94a7
 config.model.target_mse = 5e-5;
 config.model.min_mse_improvement = -inf; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 100;
+config.model.max_epochs_output = 1000;
 config.model.eta_output = 0.008;
-config.model.max_epochs_candidate = 100;
+config.model.max_epochs_candidate = 1000;
 config.model.eta_candidate = 0.05;
 config.model.plateau_min_delta = 0;   % treat as plateau if loss/metric improves below this
 config.model.plateau_patience = inf;      % stop after this many stagnant epochs

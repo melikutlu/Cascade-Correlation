@@ -1,4 +1,4 @@
-% % CCNN_Npred.m
+% CCNN_Npred.m
 % CCNN where candidate units are trained to MAXIMIZE N-step residual correlation
 % Model and candidate training both operate on N-step trajectory predictions.
 
@@ -22,31 +22,23 @@ config.prediction.n_steps = 20; % default N-step horizon (override auto when dis
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [0 1]; % example: u(t), u(t-1)
-config.regressors.y = [1 2]; % example: y(t-1), y(t-2)
+config.regressors.u = [0]; % example: u(t), u(t-1)
+config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-config.model.max_hidden_units = 5;
+config.model.max_hidden_units = 15;
 config.model.target_mse = 5e-5;
-config.model.min_mse_improvement = 1e-5; % early stop threshold
+config.model.min_mse_improvement = 1e-6; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
 config.model.eta_output = 0.008;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.05;
-config.model.plateau_min_delta = 0;   % treat as plateau if loss/metric improves below this
-config.model.plateau_patience = inf;      % stop after this many stagnant epochs
-
-% moving-average early-stop (per-epoch error history)
-% When enabled, the trainer will compute the mean of the last
-% `moving_avg_window` epoch errors and stop if that mean falls below
-% `moving_avg_threshold`.
-config.model.use_moving_avg_stop = true;
-config.model.moving_avg_window = 20;      % number of most-recent epochs to average
-config.model.moving_avg_threshold = config.model.target_mse; % default threshold (can override)
+config.model.plateau_min_delta = 1e-4;   % treat as plateau if loss/metric improves below this
+config.model.plateau_patience = 10;      % stop after this many stagnant epochs
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
@@ -93,11 +85,6 @@ else
         outputTrainInfo.epochs_run, config.model.max_epochs_output);
 end
 
-% print whether training stopped due to moving-average stop (if present)
-if isfield(outputTrainInfo,'stop_by_moving_avg')
-    fprintf('Output train stopped by moving-avg: %d\n', double(outputTrainInfo.stop_by_moving_avg));
-end
-
 mse_hist = current_mse;
 candidateEpochHistory = [];
 candidatePlateauHistory = [];
@@ -113,7 +100,7 @@ while current_mse > config.model.target_mse && numel(W_hidden) < config.model.ma
     % train candidate to maximize correlation with residual (N-step)
     [w_h, cand_metric, candInfo] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
     candidateEpochHistory(end+1) = candInfo.epochs_run; %#ok<AGROW>
-    candidatePlateauHistory(end+1) = candInfo.plateau_epoch; %#ok<AGROW>7opğ
+    candidatePlateauHistory(end+1) = candInfo.plateau_epoch; %#ok<AGROW>
     fprintf('Candidate #%d | corr^2 (on train residual): %.6g\n', h, cand_metric);
     if ~isnan(candInfo.plateau_epoch)
         fprintf('Candidate #%d plateau at epoch %d (ran %d/%d epochs).\n', ...
@@ -157,9 +144,7 @@ Yhat_va = Yhat_va(2:end) * norm_stats.y_std + norm_stats.y_mu;
 
 fit_tr = fitPercent(Ytr_raw(2:end), Yhat_tr);
 fit_va = fitPercent(Yva_raw(2:end), Yhat_va);
-rmse_tr = sqrt(mean((Ytr_raw(2:end) - Yhat_tr).^2));
-rmse_va = sqrt(mean((Yva_raw(2:end) - Yhat_va).^2));
-fprintf('\nTrain Fit: %.2f%% (RMSE=%.4g) | Val Fit: %.2f%% (RMSE=%.4g)\n', fit_tr, rmse_tr, fit_va, rmse_va);
+fprintf('\nTrain Fit: %.2f%% | Val Fit: %.2f%%\n', fit_tr, fit_va);
 
 % Persist key hyperparameters so manual tweaks are traceable.
 logInfo = struct();
@@ -183,14 +168,7 @@ logInfo.n_steps = Npred;
 logInfo.train_mse = current_mse;
 logInfo.fit_train = fit_tr;
 logInfo.fit_val = fit_va;
-logInfo.rmse_train = rmse_tr;
-logInfo.rmse_val = rmse_va;
 logInfo.activation = config.model.activation;
-% include training progress history so it is available to the log writer
-logInfo.mse_history = mse_hist;
-if isfield(outputTrainInfo,'stop_by_moving_avg')
-    logInfo.output_stop_by_mavg = double(outputTrainInfo.stop_by_moving_avg);
-end
 logFilePath = writeParameterLog(config, logInfo);
 if ~isempty(logFilePath)
     fprintf('Parameter log saved to %s\n', logFilePath);
@@ -207,8 +185,7 @@ plot(Yva_raw(2:end),'k','LineWidth',1.4); hold on;
 plot(Yhat_va,'r--','LineWidth',1.2); grid on;
 title(sprintf('VAL | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_va)); legend('True','CCNN');
 
-% also save the loss-vs-units figure into the run folder so it's available visually
-savedFigurePaths = saveFitFigures(logFilePath, struct('train', figTrain, 'val', figVal, 'loss', lossFigHandle));
+savedFigurePaths = saveFitFigures(logFilePath, struct('train', figTrain, 'val', figVal));
 if ~isempty(savedFigurePaths) && ~isempty(logFilePath)
     appendFigureInfoToLog(logFilePath, savedFigurePaths);
 end
@@ -405,7 +382,6 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     plateauEpoch = NaN;
     minDelta = config.model.plateau_min_delta;
     patience = config.model.plateau_patience;
-    stopByMavg = false;
 
     numSamples = size(X0,1);
     batchSize = resolveBatchSize(config, 'batch_size_output', numSamples);
@@ -424,20 +400,6 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
         end
 
         loss_hist(ep) = epochLoss;
-        % moving-average early-stop check (user-configurable)
-        if isfield(config.model,'use_moving_avg_stop') && config.model.use_moving_avg_stop
-            win = max(1, round(config.model.moving_avg_window));
-            th = config.model.moving_avg_threshold;
-            % only evaluate moving-average once we have at least 'win' epochs
-            if ep >= win
-                mavg = mean(loss_hist(ep-win+1:ep));
-                if mavg < th
-                    plateauEpoch = ep;
-                    stopByMavg = true;
-                    break;
-                end
-            end
-        end
         if bestLoss - epochLoss > minDelta
             bestLoss = epochLoss;
             epochsSinceBest = 0;
@@ -452,19 +414,19 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
     w_o = extractdata(w_o);
     epochs_run = ep;
     loss_hist = loss_hist(1:epochs_run);
-    info = struct('epochs_run', epochs_run, 'plateau_epoch', plateauEpoch, 'loss_history', loss_hist, 'stop_by_moving_avg', stopByMavg);
+    info = struct('epochs_run', epochs_run, 'plateau_epoch', plateauEpoch, 'loss_history', loss_hist);
     Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
     % use l2loss with explicit DataFormat
     Yvec = reshape(Y,1,[]);
     Tvec = reshape(T,1,[]);
-    mse = gather(extractdata(sqrt(l2loss(Yvec, Tvec, 'DataFormat', 'CB'))));
+    mse = gather(extractdata(l2loss(Yvec, Tvec, 'DataFormat', 'CB')));
 end
 
 function [L,grad] = loss_output_traj(w, X0, U, T, W_hidden, g, config)
     Y = forwardModelTrajectory(X0, U, W_hidden, g, w, config);
     Yvec = reshape(Y,1,[]);
     Tvec = reshape(T,1,[]);
-    L = sqrt(l2loss(Yvec, Tvec, 'DataFormat', 'CB'));
+    L = l2loss(Yvec, Tvec, 'DataFormat', 'CB');
     grad = dlgradient(L, w);
 end
 
@@ -560,13 +522,10 @@ function logFilePath = writeParameterLog(config, logInfo)
         [scriptDir, scriptBase] = fileparts(scriptFullPath);
     end
 
-        % Fit değerlerini hazırla (noktaları 'p' ile değiştir)
-    fitTrStr = strrep(sprintf('%.1f', logInfo.fit_train), '.', 'p');
-    fitVaStr = strrep(sprintf('%.1f', logInfo.fit_val), '.', 'p');
-    
-    % Sadece fit değerlerinden oluşan descriptor
-    descriptor = sprintf('fitTr%s_fitVa%s', fitTrStr, fitVaStr);
-    
+    descriptor = sprintf('eta%.3g-%.3g_ep%d-%d_hid%d_reg%d', ...
+        logInfo.eta_output, logInfo.eta_candidate, ...
+        logInfo.max_epochs_output, logInfo.max_epochs_candidate, ...
+        logInfo.hidden_units, logInfo.regressor_count);
     descriptor = strrep(descriptor,'.','p');
     descriptor = regexprep(descriptor,'[^A-Za-z0-9_-]','_');
     if numel(descriptor) > 64
@@ -610,9 +569,6 @@ function logFilePath = writeParameterLog(config, logInfo)
         logInfo.regressor_count, logInfo.candidate_runs);
     fprintf(fid, '%s\n', summaryLine);
     fprintf(fid, 'Output plateau epoch : %s\n', formatPlateauValue(logInfo.output_plateau_epoch));
-        if isfield(logInfo,'output_stop_by_mavg')
-            fprintf(fid, 'Output stopped by moving-avg : %d\n', logInfo.output_stop_by_mavg);
-        end
 
     candEpochStr = formatArrayField(logInfo.candidate_epochs_used);
     candPlateauStr = formatArrayField(logInfo.candidate_plateau_epochs);
@@ -620,16 +576,9 @@ function logFilePath = writeParameterLog(config, logInfo)
     fprintf(fid, 'Candidate plateau epochs      : %s\n', candPlateauStr);
 
     fprintf(fid, 'N-step horizon : %d\n', logInfo.n_steps);
-    fprintf(fid, 'Train obj RMSE  : %.6g\n', logInfo.train_mse);
-    fprintf(fid, 'Train series RMSE : %.6g\n', logInfo.rmse_train);
-    fprintf(fid, 'Val   RMSE      : %.6g\n', logInfo.rmse_val);
+    fprintf(fid, 'Train MSE       : %.6g\n', logInfo.train_mse);
     fprintf(fid, 'Train Fit (%%)   : %.2f\n', logInfo.fit_train);
     fprintf(fid, 'Val   Fit (%%)   : %.2f\n\n', logInfo.fit_val);
-
-    % include per-unit MSE history so the log contains the loss progression
-    if isfield(logInfo,'mse_history') && ~isempty(logInfo.mse_history)
-        fprintf(fid, 'MSE history (per hidden unit added): %s\n', formatArrayField(logInfo.mse_history));
-    end
 
     fprintf(fid, 'Regressors.u : %s\n', mat2str(logInfo.regressors_u));
     fprintf(fid, 'Regressors.y : %s\n', mat2str(logInfo.regressors_y));

@@ -22,13 +22,17 @@ config.prediction.n_steps = 20; % default N-step horizon (override auto when dis
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [0 1]; % example: u(t), u(t-1)
-config.regressors.y = [1 2]; % example: y(t-1), y(t-2)
+config.regressors.u = [0]; % example: u(t), u(t-1)
+config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
+<<<<<<< HEAD
 config.model.max_hidden_units = 0;
+=======
+config.model.max_hidden_units = 10;
+>>>>>>> e1ea5765ce1ff6c698b1e8fb1526491c517a94a7
 config.model.target_mse = 5e-5;
 config.model.min_mse_improvement = -inf; % early stop threshold
 
@@ -260,6 +264,12 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
             end
         end
     end
+
+     % Eğer plateau nedeniyle durmadıysak (tüm epoch'lar koşulduysa)
+    if isnan(plateauEpoch)
+        plateauEpoch = ep;  % veya maxEpochs (ep = maxEpochs olacak)
+    end
+
     w_h = best_w;
     epochs_run = ep;
     metric_hist = metric_hist(1:epochs_run);
@@ -277,7 +287,8 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     R = T - Y_model; % residual (M x N)
 
     % compute candidate activation v (M x N)
-    M = size(X0,1); N = size(U,2);
+    M = size(X0,1); 
+    N = size(U,2);
     v = dlarray(zeros(M,N));
     for t=1:N
         % build regressor vector x_t for all M samples

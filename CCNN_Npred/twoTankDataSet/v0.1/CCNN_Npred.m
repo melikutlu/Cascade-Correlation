@@ -22,8 +22,8 @@ config.prediction.n_steps = 15; % default N-step horizon (can be auto-adjusted)
 config.prediction.auto_full_horizon = true; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [0 1 2]; % example: u(t), u(t-1)
-config.regressors.y = [1 2 3]; % example: y(t-1), y(t-2)
+config.regressors.u = [0]; % example: u(t), u(t-1)
+config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training

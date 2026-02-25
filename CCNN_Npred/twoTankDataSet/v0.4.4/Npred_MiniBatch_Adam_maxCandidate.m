@@ -32,8 +32,7 @@ config.model.max_hidden_units = 10;
 config.model.target_mse = 1e-3;  % true MSE — adjust if needed
 config.model.min_mse_improvement = 1e-6; % early stop threshold
 
-% Output 100 epoch'ta yakınsıyor; daha fazlası trajectory'ye overfitting → recursive divergence.
-% Candidate için daha fazla epoch verilebilir (sadece w_h eğitir, w_o'yu etkilemez).
+% Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
 config.model.eta_output = 0.008;
 config.model.max_epochs_candidate = 100;
@@ -44,12 +43,9 @@ config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mea
 % against the mean of the previous `moving_avg_window` epochs.
 % If improvement <= plateau_min_delta, training stops (plateau detected).
 config.model.moving_avg_window = 20;      % number of previous epochs to average
-% use_plateau_stop_output   : true  -> output layer plateau'da erken dur (genelde 20-30 epochta yakınsar, 100'e zorlamak gereksiz)
-%                            false -> output layer full epoch koş
-% use_plateau_stop_candidate: true  -> candidate plateau'da dur
-%                            false -> candidate full epoch koş (300 epochun tamamını istiyorsan false yap)
-config.model.use_plateau_stop_output    = true;   % output erken durabilir
-config.model.use_plateau_stop_candidate = false;  % candidate full 300 epoch koşsun
+% use_plateau_stop: true  -> son 20 epoch iyileşmesi köyüleşirse erken dur
+%                  false -> plateau kontrolü devre dışı, full epoch koş
+config.model.use_plateau_stop = false;
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
@@ -128,8 +124,7 @@ while current_mse > config.model.target_mse && numel(W_hidden) < config.model.ma
 
     % tentatively add candidate
     W_hidden{end+1} = w_h;
-    %w_o = [w_o; randn*0.01];
-    w_o = [w_o; 0];
+    w_o = [w_o; randn*0.01];
 
     prev_mse = current_mse;
     [w_o, current_mse, outputTrainInfo] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
@@ -251,13 +246,11 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
 
         metricVal = evaluateCandidateMetric(w_h, X0_d, U_d, T_d, W_hidden, w_o_d, g, config);
         metric_hist(ep) = metricVal;
-        % best_w: |cov| ile kıyasla — negatif korelasyon da pozitif kadar değerlidir.
-        % w_o yeniden eğitildiğinde işareti zaten ayarlanır.
-        if abs(metricVal) > best_metric
-            best_metric = abs(metricVal);
+        if metricVal > best_metric
+            best_metric = metricVal;
             best_w = extractdata(w_h);
         end
-        if config.model.use_plateau_stop_candidate && ep > window
+        if config.model.use_plateau_stop && ep > window
             mavg = mean(metric_hist(ep-window:ep-1));
             if metricVal - mavg <= minDelta
                 plateauEpoch = ep;
@@ -333,29 +326,24 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     % flatten and center
     r_vec = reshape(R, [], 1);
     v_vec = reshape(v, [], 1);
-    
     r_mean = mean(r_vec);
     v_mean = mean(v_vec);
-    
     r_c = r_vec - r_mean;
     v_c = v_vec - v_mean;
-    
-    % Pearson Korelasyonu (-1 ile 1 arasında sınırlandırılmış)
-    cov_vr = mean(v_c .* r_c);
-    std_v = sqrt(mean(v_c.^2) + eps);
-    std_r = sqrt(mean(r_c.^2) + eps);
-    
-    corr_val = cov_vr / (std_v * std_r); 
-    metric = corr_val;
+
+    cov_vr = sum(v_c .* r_c);
+    denom = (sum(v_c.^2) + eps) .* (sum(r_c.^2) + eps);
+    corr2 = (cov_vr.^2) ./ denom; % correlation squared (scalar)
+
+    %metric = corr2;
+    metric = cov_vr;   
+    %metric = (cov_vr.^2) ./ (sum(v_c.^2) + eps);  % sadece Var(v) ile normalize et
 end
 
 function [L, metric, grad] = loss_candidate_corr(w_h, X0, U, T, W_hidden, w_o, g, config)
     metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, config);
-    L = -(metric^2); % Karesini maksimize et
-    
+    L = -metric; % minimize negative corr^2 -> maximize corr^2
     grad = dlgradient(L, w_h);
-    % GRADYAN KIRPMA (Güvenlik bariyeri: gradyanları -5 ile +5 arasına sıkıştır)
-    grad = dlupdate(@(g) max(min(g, 5), -5), grad); 
 end
 
 function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
@@ -437,7 +425,7 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
         end
 
         loss_hist(ep) = epochLoss;
-        if config.model.use_plateau_stop_output && ep > window
+        if config.model.use_plateau_stop && ep > window
             mavg = mean(loss_hist(ep-window:ep-1));
             if mavg - epochLoss <= minDelta
                 plateauEpoch = ep;

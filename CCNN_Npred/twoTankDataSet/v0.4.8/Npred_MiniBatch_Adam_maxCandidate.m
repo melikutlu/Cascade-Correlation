@@ -22,15 +22,16 @@ config.prediction.n_steps = 20; % default N-step horizon (override auto when dis
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [0 1]; % example: u(t), u(t-1)
-config.regressors.y = [1 2]; % example: y(t-1), y(t-2)
+config.regressors.u = [0]; % example: u(t), u(t-1)
+config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-config.model.max_hidden_units = 10;
+config.model.max_hidden_units = 5;
+config.model.force_hidden_growth = true; % true: always add up to max_hidden_units
 config.model.target_mse = 1e-3;  % true MSE — adjust if needed
-config.model.min_mse_improvement = 1e-6; % early stop threshold
+config.model.min_mse_improvement = -inf; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
@@ -50,6 +51,8 @@ config.model.use_plateau_stop = false;
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
 config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
+config.training.candidate_pool_size = 5;    % train this many candidates, pick best scored
+config.training.use_parfor_pool = true;     % true: train candidate pool with parfor (if available)
 
 % ------------------
 % DATA
@@ -59,7 +62,7 @@ config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit
 
 if isfield(config.prediction, 'auto_full_horizon') && config.prediction.auto_full_horizon
     maxLag = getMaxLagFromRegressors(config.regressors);
-    maxStepsTr = numel(Ytr) - maxLag - 1;
+    maxStepsTr = numel(Ytr) - maxLag;
     maxStepsVa = numel(Yva) - maxLag - 1;
     autoSteps = min([maxStepsTr, maxStepsVa]);
     if autoSteps < 1
@@ -104,33 +107,75 @@ lossPlotHandle = [];
 lossFigHandle = [];
 [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 
-% Greedy growth
-while current_mse > config.model.target_mse && numel(W_hidden) < config.model.max_hidden_units
-    h = numel(W_hidden) + 1;
-    fprintf('\nTraining candidate #%d (maximize N-step residual correlation)\n', h);
+% Greedy growth with candidate pool
+while numel(W_hidden) < config.model.max_hidden_units
+    if ~config.model.force_hidden_growth && current_mse <= config.model.target_mse
+        break;
+    end
 
-    % train candidate to maximize correlation with residual (N-step)
-    [w_h, cand_metric, candInfo] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
+    h = numel(W_hidden) + 1;
+    poolSize = max(1, round(config.training.candidate_pool_size));
+    useParforPool = config.training.use_parfor_pool && license('test','Distrib_Computing_Toolbox') && ~isempty(ver('parallel'));
+    fprintf('\nTraining candidate pool for hidden #%d (pool=%d, parfor=%d)\n', h, poolSize, double(useParforPool));
+
+    % train a pool of candidates and select the best-scored one
+    bestCandMetric = -inf;
+    bestCandW = [];
+    bestCandInfo = struct('epochs_run', 0, 'plateau_epoch', NaN, 'metric_history', []);
+
+    candWeights = cell(poolSize,1);
+    candMetrics = -inf(poolSize,1);
+    candInfos = cell(poolSize,1);
+
+    if useParforPool
+        parfor p = 1:poolSize
+            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
+            candWeights{p} = tmp_w;
+            candMetrics(p) = tmp_metric;
+            candInfos{p} = tmp_info;
+        end
+    else
+        for p = 1:poolSize
+            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
+            candWeights{p} = tmp_w;
+            candMetrics(p) = tmp_metric;
+            candInfos{p} = tmp_info;
+        end
+    end
+
+    [bestCandMetric, bestIdx] = max(candMetrics);
+    if isfinite(bestCandMetric)
+        bestCandW = candWeights{bestIdx};
+        bestCandInfo = candInfos{bestIdx};
+    end
+
+    w_h = bestCandW;
+    cand_metric = bestCandMetric;
+    candInfo = bestCandInfo;
     candidateEpochHistory(end+1) = candInfo.epochs_run; %#ok<AGROW>
     candidatePlateauHistory(end+1) = candInfo.plateau_epoch; %#ok<AGROW>
-    fprintf('Candidate #%d | corr^2 (on train residual): %.6g\n', h, cand_metric);
+    fprintf('Selected candidate for #%d | score: %.6g\n', h, cand_metric);
     if ~isnan(candInfo.plateau_epoch)
-        fprintf('Candidate #%d plateau at epoch %d (ran %d/%d epochs).\n', ...
-            h, candInfo.plateau_epoch, candInfo.epochs_run, config.model.max_epochs_candidate);
+        fprintf('Selected candidate plateau at epoch %d (ran %d/%d epochs).\n', ...
+            candInfo.plateau_epoch, candInfo.epochs_run, config.model.max_epochs_candidate);
     else
-        fprintf('Candidate #%d used %d/%d epochs (no plateau).\n', ...
-            h, candInfo.epochs_run, config.model.max_epochs_candidate);
+        fprintf('Selected candidate used %d/%d epochs (no plateau).\n', ...
+            candInfo.epochs_run, config.model.max_epochs_candidate);
     end
 
     % tentatively add candidate
+    w_o_prev = w_o;
     W_hidden{end+1} = w_h;
-    w_o = [w_o; randn*0.01];
+    % Warm-start: mevcut output agirliklarini aynen koru,
+    % sadece yeni candidate icin bir cikis agirligi ekle.
+    w_o = [w_o_prev; 0];
 
     prev_mse = current_mse;
     [w_o, current_mse, outputTrainInfo] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
 
     improvement = prev_mse - current_mse;
-    if improvement < config.model.min_mse_improvement
+
+    if ~config.model.force_hidden_growth && improvement < config.model.min_mse_improvement
         % undo
         W_hidden(end) = [];
         w_o = w_o(1:end-1);
@@ -139,7 +184,13 @@ while current_mse > config.model.target_mse && numel(W_hidden) < config.model.ma
     end
 
     mse_hist(end+1) = current_mse;
-    fprintf('Hidden=%d | Train MSE=%.6g | improvement=%.3g\n', numel(W_hidden), current_mse, improvement);
+    if config.model.force_hidden_growth
+        fprintf('Hidden=%d/%d | Train MSE=%.6g | improvement=%.3g | force=ON\n', ...
+            numel(W_hidden), config.model.max_hidden_units, current_mse, improvement);
+    else
+        fprintf('Hidden=%d | Train MSE=%.6g | improvement=%.3g | force=OFF\n', ...
+            numel(W_hidden), current_mse, improvement);
+    end
     if ~isnan(outputTrainInfo.plateau_epoch)
         fprintf('Output layer re-train plateau at epoch %d (ran %d/%d epochs).\n', ...
             outputTrainInfo.plateau_epoch, outputTrainInfo.epochs_run, config.model.max_epochs_output);
@@ -221,10 +272,16 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
     d = size(X0,2) + numel(W_hidden); % candidate input dim
     w_h = dlarray(randn(d,1)*0.01);
 
-    X0_d = dlarray(X0); U_d = dlarray(U); T_d = dlarray(T);
+    X0_d = dlarray(X0); 
+    U_d = dlarray(U); 
+    T_d = dlarray(T);
     w_o_d = dlarray(w_o);
 
-    avgG=[]; avgGSq=[]; it=0; best_metric = -Inf; best_w = extractdata(w_h);
+    avgG=[]; 
+    avgGSq=[]; 
+    it=0; 
+    best_metric = 0;  %algoritmanın ürettiği ilk skor kötü olsa bile devam edebilmesi için
+    best_w = extractdata(w_h);
     maxEpochs = config.model.max_epochs_candidate;
     metric_hist = zeros(maxEpochs,1);
     plateauEpoch = NaN;
@@ -246,10 +303,14 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
 
         metricVal = evaluateCandidateMetric(w_h, X0_d, U_d, T_d, W_hidden, w_o_d, g, config);
         metric_hist(ep) = metricVal;
+        
+        
         if metricVal > best_metric
             best_metric = metricVal;
             best_w = extractdata(w_h);
         end
+
+
         if config.model.use_plateau_stop && ep > window
             mavg = mean(metric_hist(ep-window:ep-1));
             if metricVal - mavg <= minDelta
@@ -277,8 +338,10 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
 
     % compute candidate activation v (M x N) using the same recursive
     % y-feedback as forwardModelTrajectory so the regressors are consistent.
-    ulags = config.regressors.u(:)'; ylags = config.regressors.y(:)';
-    nu = numel(ulags); ny = numel(ylags);
+    ulags = config.regressors.u(:)'; 
+    ylags = config.regressors.y(:)';
+    nu = numel(ulags); 
+    ny = numel(ylags);
     M = size(X0,1);
     N = size(U,2);
     v = dlarray(zeros(M,N));
@@ -329,20 +392,23 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     r_mean = mean(r_vec);
     v_mean = mean(v_vec);
     r_c = r_vec - r_mean;
-    v_c = v_vec - v_mean;
+    v_c = (v_vec - v_mean) + 0.1 * sign(v_vec - v_mean);
+    %Fahlman makalede aday ünite aktivasyonunun (v) çok hızlı doyuma ulaşıp (-1 veya +1) gradyanın sıfırlanmasından bahseder. Bunu engellemek için v_c hesaplanırken ufak bir "offset" (0.1 gibi) eklenmesini önerir.
 
     cov_vr = sum(v_c .* r_c);
     denom = (sum(v_c.^2) + eps) .* (sum(r_c.^2) + eps);
     corr2 = (cov_vr.^2) ./ denom; % correlation squared (scalar)
 
+    metric = abs(cov_vr);
     %metric = corr2;
-    metric = cov_vr^2;   
+    %metric = cov_vr^2;   
     %metric = (cov_vr.^2) ./ (sum(v_c.^2) + eps);  % sadece Var(v) ile normalize et
 end
 
 function [L, metric, grad] = loss_candidate_corr(w_h, X0, U, T, W_hidden, w_o, g, config)
     metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, config);
-    L = -metric; % minimize negative corr^2 -> maximize corr^2
+    %(Karesini alarak her iki yöndeki büyümeyi de ödüllendiriyoruz):
+    L = -(metric^2);
     grad = dlgradient(L, w_h);
 end
 
@@ -506,12 +572,19 @@ function [X0, Useq, Tseq] = createTrajectoryDataset(U, Y, config, N)
     ulags = config.regressors.u(:)'; ylags = config.regressors.y(:)';
     maxLag = 0; if ~isempty(ulags(ulags>0)); maxLag = max(maxLag, max(ulags(ulags>0))); end
     if ~isempty(ylags); maxLag = max(maxLag, max(ylags)); end
-    Ns = length(Y) - N - maxLag; if Ns<1; error('Not enough data'); end
+    
+    % +1 EKLEDİK (Kayıp yörüngeyi geri aldık)
+    Ns = length(Y) - N - maxLag + 1; 
+    
+    if Ns<1; error('Not enough data'); end
     nu = numel(ulags); ny = numel(ylags);
     X0 = zeros(Ns, nu+ny); Useq = zeros(Ns, N); 
     Tseq = zeros(Ns, N);
+    
     for idx=1:Ns
-        i = idx + maxLag;
+        % -1 EKLEDİK (t=1'den, yani y1'den başlamasını sağladık)
+        i = idx + maxLag - 1; 
+        
         row = zeros(1,nu+ny);
         for j=1:nu; L=ulags(j); if L==0; row(j)=U(i); else row(j)=U(i+1-L); end; end
         for j=1:ny; L=ylags(j); row(nu+j)=Y(i+1-L); end

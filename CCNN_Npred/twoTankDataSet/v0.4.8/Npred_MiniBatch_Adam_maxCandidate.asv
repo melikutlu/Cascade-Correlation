@@ -28,15 +28,15 @@ config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-config.model.max_hidden_units = 3;
-config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
+config.model.max_hidden_units = 5;
+config.model.force_hidden_growth = true; % true: always add up to max_hidden_units
 config.model.target_mse = 1e-3;  % true MSE — adjust if needed
-config.model.min_mse_improvement = 1e-5; % early stop threshold
+config.model.min_mse_improvement = -inf; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 10;
+config.model.max_epochs_output = 100;
 config.model.eta_output = 0.008;
-config.model.max_epochs_candidate = 10;
+config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.005;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
@@ -133,7 +133,7 @@ while numel(W_hidden) < config.model.max_hidden_units
             candWeights{p} = tmp_w;
             candMetrics(p) = tmp_metric;
             candInfos{p} = tmp_info;
-            fprintf("\nParfor kullanılıyor");
+            fprintf("Parfor kullanılıyor");
         end
     else
         for p = 1:poolSize
@@ -378,7 +378,6 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
             yvals(:,j) = yhist(:, ylags(j));
         end
         x_t = [uvals, yvals];
-        
         for h=1:numel(W_hidden)
             x_t = [x_t, g(x_t * W_hidden{h})];
         end

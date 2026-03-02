@@ -29,11 +29,11 @@ config.model.activation = 'tanh';
 config.model.max_hidden_units = 20;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
-config.model.min_mse_improvement = 1e-6; % early stop threshold
+config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 500;
+config.model.max_epochs_output = 10;
 config.model.eta_output = 0.005;
 config.model.max_epochs_candidate = 300;
 config.model.eta_candidate = 0.003;

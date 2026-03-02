@@ -8,36 +8,35 @@ clear; clc; close all; rng(0);
 % CONFIG
 % ------------------
 config = struct();
-config.data.source = 'twotankdata';
-config.data.twotank.warmup_samples = 20;
-config.data.twotank.sampling_time = 0.2; % s
-config.data.twotank.filter_cutoff = 0.066902; % Hz (optional)
+config.data.source = 'dryer2';
+config.data.dryer2.sampling_time = 0.08; % s
 
 config.data.train_ratio = 0.5;
 config.data.val_ratio = 0.5;
 
 config.norm_method = 'ZScore';
 
-config.prediction.n_steps = 20; % default N-step horizon (override auto when disabled)
+config.prediction.n_steps = 1; % default N-step horizon (override auto when disabled)
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [0]; % example: u(t), u(t-1)
-config.regressors.y = [1]; % example: y(t-1), y(t-2)
+config.regressors.u = [1,2,3,4]; % example: u(t), u(t-1) (u(t) kaldır, dryer2'de dead time var)
+config.regressors.y = [1,2,3,4]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-config.model.max_hidden_units = 5;
-config.model.force_hidden_growth = true; % true: always add up to max_hidden_units
-config.model.target_mse = 1e-3;  % true MSE — adjust if needed
-config.model.min_mse_improvement = -inf; % early stop threshold
+config.model.max_hidden_units = 20;
+config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
+config.model.target_mse = 5e-4;  % true MSE — adjust if needed
+config.model.min_mse_improvement = 1e-6; % early stop threshold
+
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 100;
-config.model.eta_output = 0.008;
-config.model.max_epochs_candidate = 100;
-config.model.eta_candidate = 0.005;
+config.model.max_epochs_output = 500;
+config.model.eta_output = 0.005;
+config.model.max_epochs_candidate = 300;
+config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
 % Moving-average plateau stop: after each epoch, compare current loss/metric
@@ -133,6 +132,7 @@ while numel(W_hidden) < config.model.max_hidden_units
             candWeights{p} = tmp_w;
             candMetrics(p) = tmp_metric;
             candInfos{p} = tmp_info;
+            
         end
     else
         for p = 1:poolSize
@@ -295,7 +295,9 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
         batches = buildMiniBatchOrder(numSamples, batchSize);
         for b=1:numel(batches)
             idx = batches{b};
-            Xb = X0_d(idx,:); Ub = U_d(idx,:); Tb = T_d(idx,:);
+            Xb = X0_d(idx,:); 
+            Ub = U_d(idx,:); 
+            Tb = T_d(idx,:);
             it = it + 1;
             [loss, ~, grad] = dlfeval(@loss_candidate_corr, w_h, Xb, Ub, Tb, W_hidden, w_o_d, g, config);
             [w_h, avgG, avgGSq] = adamupdate(w_h, grad, avgG, avgGSq, it, config.model.eta_candidate);
@@ -375,6 +377,7 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
             yvals(:,j) = yhist(:, ylags(j));
         end
         x_t = [uvals, yvals];
+        
         for h=1:numel(W_hidden)
             x_t = [x_t, g(x_t * W_hidden{h})];
         end
@@ -536,20 +539,37 @@ function [Utr, Ytr, Uva, Yva] = loadDataByConfig_min(config)
                 end
                 u = uf; y = yf;
             end
+            N = length(u); Ntr = floor(config.data.train_ratio * N);
+            Utr = u(1:Ntr); Ytr = y(1:Ntr); Uva = u(Ntr+1:end); Yva = y(Ntr+1:end);
+        case 'dryer2'
+            load dryer2; % contains u2, y2
+            Ts = config.data.dryer2.sampling_time;
+            z_full = iddata(y2(:), u2(:), Ts);
+            N_total = length(z_full.y);
+            train_end = floor(config.data.train_ratio * N_total);
+            val_end   = train_end + floor(config.data.val_ratio * N_total);
+            z1 = z_full(1:train_end);
+            z1f = detrend(z1);
+            z2 = z_full(train_end+1:val_end);
+            z2f = detrend(z2);
+            Utr = z1f.u; Ytr = z1f.y;
+            Uva = z2f.u; Yva = z2f.y;
         otherwise
-            error('Unknown data source');
+            error('Unknown data source: %s', config.data.source);
     end
-    N = length(u); Ntr = floor(config.data.train_ratio * N);
-    Utr = u(1:Ntr); Ytr = y(1:Ntr); Uva = u(Ntr+1:end); Yva = y(Ntr+1:end);
 end
 
 function [Utr,Ytr,Uva,Yva,stats] = normalizeData_min(method,Utr,Ytr,Uva,Yva)
     switch lower(method)
         case 'zscore'
-            stats.u_mu = mean(Utr); stats.u_std = std(Utr)+eps;
-            stats.y_mu = mean(Ytr); stats.y_std = std(Ytr)+eps;
-            Utr = (Utr - stats.u_mu)/stats.u_std; Uva = (Uva - stats.u_mu)/stats.u_std;
-            Ytr = (Ytr - stats.y_mu)/stats.y_std; Yva = (Yva - stats.y_mu)/stats.y_std;
+            stats.u_mu = mean(Utr); 
+            stats.u_std = std(Utr)+eps;
+            stats.y_mu = mean(Ytr); 
+            stats.y_std = std(Ytr)+eps;
+            Utr = (Utr - stats.u_mu)/stats.u_std; 
+            Uva = (Uva - stats.u_mu)/stats.u_std;
+            Ytr = (Ytr - stats.y_mu)/stats.y_std; 
+            Yva = (Yva - stats.y_mu)/stats.y_std;
         otherwise
             error('Unknown normalization');
     end

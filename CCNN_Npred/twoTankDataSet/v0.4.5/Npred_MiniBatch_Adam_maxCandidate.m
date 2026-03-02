@@ -22,15 +22,15 @@ config.prediction.n_steps = 20; % default N-step horizon (override auto when dis
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [0 1]; % example: u(t), u(t-1)
-config.regressors.y = [1 2]; % example: y(t-1), y(t-2)
+config.regressors.u = [0]; % example: u(t), u(t-1)
+config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-config.model.max_hidden_units = 10;
+config.model.max_hidden_units = 2;
 config.model.target_mse = 1e-3;  % true MSE — adjust if needed
-config.model.min_mse_improvement = 1e-6; % early stop threshold
+config.model.min_mse_improvement = -inf; % early stop threshold
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
@@ -130,13 +130,15 @@ while current_mse > config.model.target_mse && numel(W_hidden) < config.model.ma
     [w_o, current_mse, outputTrainInfo] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
 
     improvement = prev_mse - current_mse;
-    if improvement < config.model.min_mse_improvement
-        % undo
-        W_hidden(end) = [];
-        w_o = w_o(1:end-1);
-        fprintf('Undo candidate #%d: improvement %.3g < threshold %.3g. Stopping growth.\n', h, improvement, config.model.min_mse_improvement);
-        break;
-    end
+
+    % hidden eklemeye zorlamak için yorum satırı yap
+    % if improvement < config.model.min_mse_improvement
+    %     % undo
+    %     W_hidden(end) = [];
+    %     w_o = w_o(1:end-1);
+    %     fprintf('Undo candidate #%d: improvement %.3g < threshold %.3g. Stopping growth.\n', h, improvement, config.model.min_mse_improvement);
+    %     break;
+    % end
 
     mse_hist(end+1) = current_mse;
     fprintf('Hidden=%d | Train MSE=%.6g | improvement=%.3g\n', numel(W_hidden), current_mse, improvement);
@@ -221,10 +223,16 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
     d = size(X0,2) + numel(W_hidden); % candidate input dim
     w_h = dlarray(randn(d,1)*0.01);
 
-    X0_d = dlarray(X0); U_d = dlarray(U); T_d = dlarray(T);
+    X0_d = dlarray(X0); 
+    U_d = dlarray(U); 
+    T_d = dlarray(T);
     w_o_d = dlarray(w_o);
 
-    avgG=[]; avgGSq=[]; it=0; best_metric = -Inf; best_w = extractdata(w_h);
+    avgG=[]; 
+    avgGSq=[]; 
+    it=0; 
+    best_metric = -Inf;  %agoritmanın ürettiği ilk skor kötü olsa bile devam edebilmesi için
+    best_w = extractdata(w_h);
     maxEpochs = config.model.max_epochs_candidate;
     metric_hist = zeros(maxEpochs,1);
     plateauEpoch = NaN;
@@ -335,8 +343,8 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     denom = (sum(v_c.^2) + eps) .* (sum(r_c.^2) + eps);
     corr2 = (cov_vr.^2) ./ denom; % correlation squared (scalar)
 
-    %metric = corr2;
-    metric = cov_vr^2;   
+    metric = corr2;
+    %metric = cov_vr^2;   
     %metric = (cov_vr.^2) ./ (sum(v_c.^2) + eps);  % sadece Var(v) ile normalize et
 end
 

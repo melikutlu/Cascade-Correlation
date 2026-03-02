@@ -1,0 +1,33 @@
+v0.4.8 - Değişiklik Özeti
+Tarih: 28.02.2026
+
+1) Hidden eklendiğinde output ağırlık başlangıcı (warm-start)
+- Yeni hidden unit eklendiğinde mevcut w_o ağırlıkları korunur.
+- Sadece yeni hidden->output bağlantısı 0 ile başlatılır.
+- Amaç: önceki öğrenilmiş işaret ve büyüklükleri bozmadan devam etmek.
+
+2) Candidate Pool (Aday Havuzu)
+- Her hidden ekleme adımında tek aday yerine bir havuz eğitilir.
+- Varsayılan havuz boyutu: 5 (config.training.candidate_pool_size = 5).
+- Havuzdaki adaylar arasından en iyi skorlu (en yüksek metric) aday seçilip eklenir.
+
+3) Force Hidden Growth (Zorunlu büyütme)
+- config.model.force_hidden_growth = true iken model, MSE hedefinden bağımsız olarak
+  max_hidden_units değerine kadar hidden eklemeye devam eder.
+- force false yapılırsa erken durdurma/iyileşme kontrolü tekrar devreye girer.
+
+4) parfor desteği (Aday havuzunu paralel eğitme)
+- config.training.use_parfor_pool = true iken ve Parallel Computing Toolbox varsa,
+  havuzdaki adaylar parfor ile paralel eğitilir.
+- Toolbox yoksa kod otomatik olarak normal for döngüsüne düşer (fallback).
+
+5) Candidate metric hesap akışı
+- candidateCorrelationMetric fonksiyonunda mini-batch boyut uyumsuzluğu kaynaklı
+  birleştirme (concat) hatası düzeltilmiştir.
+- Hesap akışı MxN trajectory düzenine uyumlu olacak şekilde korunmuştur.
+
+Kullanıcı tarafından hızlı aç/kapat ayarları:
+- force growth: config.model.force_hidden_growth
+- havuz boyutu: config.training.candidate_pool_size
+- parfor kullanımı: config.training.use_parfor_pool
+- max hidden: config.model.max_hidden_units

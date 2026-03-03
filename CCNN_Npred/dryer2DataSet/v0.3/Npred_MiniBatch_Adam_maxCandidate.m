@@ -16,7 +16,7 @@ config.data.val_ratio = 0.5;
 
 config.norm_method = 'ZScore';
 
-config.prediction.n_steps = 1; % default N-step horizon (override auto when disabled)
+config.prediction.n_steps = 20; % default N-step horizon (override auto when disabled)
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
@@ -33,9 +33,9 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 300;
+config.model.max_epochs_output = 50;
 config.model.eta_output = 0.005;
-config.model.max_epochs_candidate = 300;
+config.model.max_epochs_candidate = 50;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
@@ -45,7 +45,7 @@ config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mea
 config.model.moving_avg_window = 20;      % number of previous epochs to average
 % use_plateau_stop: true  -> son 20 epoch iyileşmesi köyüleşirse erken dur
 %                  false -> plateau kontrolü devre dışı, full epoch koş
-config.model.use_plateau_stop = false;
+config.model.use_plateau_stop = true;
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
@@ -190,8 +190,12 @@ while numel(W_hidden) < config.model.max_hidden_units
         W_hidden(end) = [];
         w_o = w_o_prev;
         fprintf('Undo candidate #%d: improvement %.3g < threshold %.3g. Stopping growth.\n', h, improvement, config.model.min_mse_improvement);
+
         break;
+      
     end
+
+
 
     mse_hist(end+1) = current_mse;
     Yhat_stage_raw = Yhat_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
@@ -503,10 +507,17 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
             [L,grad] = dlfeval(@loss_output_traj, w_o, Xb, Ub, Tb, W_hidden, g, config);
             [w_o, avgG, avgGSq] = adamupdate(w_o, grad, avgG, avgGSq, it, config.model.eta_output);
             batchLoss = gather(extractdata(L));
-            epochLoss = epochLoss + batchLoss * (numel(idx)/numSamples);
+            epochLoss = epochLoss + batchLoss;
         end
 
+        epochLoss = epochLoss/numel(batches);
+      
         loss_hist(ep) = epochLoss;
+
+        plot(1:ep,loss_hist(1:ep),'b-','LineWidth',1.5);
+        title('Loss History');
+        drawnow;
+
         if config.model.use_plateau_stop && ep > window
             mavg = mean(loss_hist(ep-window:ep-1));
             if mavg - epochLoss <= minDelta
@@ -790,7 +801,7 @@ function [plotHandle, figHandle] = updateLossFigure(plotHandle, figHandle, mse_h
         grid on;
         xlabel('Hidden Units');
         ylabel('Train MSE');
-        title('Train MSE vs Hidden Units');
+        title('Loss Graph');
     else
         set(plotHandle, 'XData', xVals, 'YData', mse_hist);
     end

@@ -16,7 +16,7 @@ config.data.val_ratio = 0.5;
 
 config.norm_method = 'ZScore';
 
-config.prediction.n_steps = 1; % default N-step horizon (override auto when disabled)
+config.prediction.n_steps = 20; % default N-step horizon (override auto when disabled)
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
@@ -26,7 +26,7 @@ config.regressors.include_bias = false;
 
 % model / training
 config.model.activation = 'tanh';
-config.model.max_hidden_units = 20;
+config.model.max_hidden_units = 10;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
 config.model.min_mse_improvement = 1e-4; % early stop threshold
@@ -83,8 +83,14 @@ d0 = size(X0_tr,2);
 w_o = randn(d0,1)*0.01;
 
 % Stage 1: train output weights only (N-step MSE)
-[w_o, current_mse, outputTrainInfo] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
-fprintf('Stage-1 Train MSE: %.6g\n', current_mse);
+[w_o, ~, outputTrainInfo] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
+% Full-series recursive MSE (tutarlı olması için büyüme kararları bununla alınır)
+Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, g, config);
+current_mse = mean((Ytr(2:end) - Yhat_tmp(2:end)).^2);
+Yhat_tmp_raw = Yhat_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
+stage0_rmse = sqrt(mean((Ytr_raw(2:end) - Yhat_tmp_raw).^2));
+stage0_fit  = fitPercent(Ytr_raw(2:end), Yhat_tmp_raw);
+fprintf('--- Hidden=0 | MSE=%.6g | RMSE=%.4g | Fit=%.2f%% ---\n', current_mse, stage0_rmse, stage0_fit);
 
 if ~isnan(outputTrainInfo.plateau_epoch)
     fprintf('Output layer plateau at epoch %d (ran %d/%d epochs).\n', ...
@@ -171,25 +177,32 @@ while numel(W_hidden) < config.model.max_hidden_units
     w_o = [w_o_prev; 0];
 
     prev_mse = current_mse;
-    [w_o, current_mse, outputTrainInfo] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
+    [w_o, ~, outputTrainInfo] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config);
+    % Full-series recursive MSE (tutarlı olması için büyüme kararları bununla alınır)
+    Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, g, config);
+    current_mse = mean((Ytr(2:end) - Yhat_tmp(2:end)).^2);
 
     improvement = prev_mse - current_mse;
 
     if ~config.model.force_hidden_growth && improvement < config.model.min_mse_improvement
-        % undo
+        % undo: w_o_prev'i geri yükle (retrain sonrası tüm elemanlar
+        % yeni hidden unit için güncellendi, w_o(1:end-1) yanlış olur)
         W_hidden(end) = [];
-        w_o = w_o(1:end-1);
+        w_o = w_o_prev;
         fprintf('Undo candidate #%d: improvement %.3g < threshold %.3g. Stopping growth.\n', h, improvement, config.model.min_mse_improvement);
         break;
     end
 
     mse_hist(end+1) = current_mse;
+    Yhat_stage_raw = Yhat_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
+    stage_rmse = sqrt(mean((Ytr_raw(2:end) - Yhat_stage_raw).^2));
+    stage_fit  = fitPercent(Ytr_raw(2:end), Yhat_stage_raw);
     if config.model.force_hidden_growth
-        fprintf('Hidden=%d/%d | Train MSE=%.6g | improvement=%.3g | force=ON\n', ...
-            numel(W_hidden), config.model.max_hidden_units, current_mse, improvement);
+        fprintf('--- Hidden=%d/%d | MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | improvement=%.3g | force=ON ---\n', ...
+            numel(W_hidden), config.model.max_hidden_units, current_mse, stage_rmse, stage_fit, improvement);
     else
-        fprintf('Hidden=%d | Train MSE=%.6g | improvement=%.3g | force=OFF\n', ...
-            numel(W_hidden), current_mse, improvement);
+        fprintf('--- Hidden=%d | MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | improvement=%.3g ---\n', ...
+            numel(W_hidden), current_mse, stage_rmse, stage_fit, improvement);
     end
     if ~isnan(outputTrainInfo.plateau_epoch)
         fprintf('Output layer re-train plateau at epoch %d (ran %d/%d epochs).\n', ...
@@ -490,10 +503,17 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
             [L,grad] = dlfeval(@loss_output_traj, w_o, Xb, Ub, Tb, W_hidden, g, config);
             [w_o, avgG, avgGSq] = adamupdate(w_o, grad, avgG, avgGSq, it, config.model.eta_output);
             batchLoss = gather(extractdata(L));
-            epochLoss = epochLoss + batchLoss * (numel(idx)/numSamples);
+            epochLoss = epochLoss + batchLoss;
         end
 
+        epochLoss = epochLoss/numel(batches);
+      
         loss_hist(ep) = epochLoss;
+
+        plot(1:ep,loss_hist(1:ep),'b-','LineWidth',1.5);
+        title('Loss History');
+        drawnow;
+
         if config.model.use_plateau_stop && ep > window
             mavg = mean(loss_hist(ep-window:ep-1));
             if mavg - epochLoss <= minDelta
@@ -614,8 +634,11 @@ end
 
 function Yhat = recursivePredictFullSeries(U, Y, W_hidden, w_o, g, config)
     N = length(Y); 
-    Yhat = zeros(N,1); if N>=1; Yhat(1)=Y(1); end
-    ulags = config.regressors.u(:)'; ylags = config.regressors.y(:)'; nu=numel(ulags); ny=numel(ylags);
+    Yhat = zeros(N,1); 
+    if N>=1; Yhat(1)=Y(1); end
+    ulags = config.regressors.u(:)'; 
+    ylags = config.regressors.y(:)'; 
+    nu=numel(ulags); ny=numel(ylags);
     for k=2:N
         uvals=zeros(nu,1); for j=1:nu; L=ulags(j); if L==0; uvals(j)=U(k); else idx=k-L; if idx>=1; uvals(j)=U(idx); else uvals(j)=0; end; end; end
         yvals=zeros(ny,1); for j=1:ny; L=ylags(j); idx=k-L; if idx>=1; yvals(j)=Yhat(idx); else yvals(j)=0; end; end

@@ -33,7 +33,7 @@ config.model.min_mse_improvement = 1e-6; % early stop threshold
 
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 500;
+config.model.max_epochs_output = 300;
 config.model.eta_output = 0.005;
 config.model.max_epochs_candidate = 300;
 config.model.eta_candidate = 0.003;
@@ -490,9 +490,9 @@ function [w_o,mse,info] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g,conf
             [L,grad] = dlfeval(@loss_output_traj, w_o, Xb, Ub, Tb, W_hidden, g, config);
             [w_o, avgG, avgGSq] = adamupdate(w_o, grad, avgG, avgGSq, it, config.model.eta_output);
             batchLoss = gather(extractdata(L));
-            epochLoss = epochLoss + batchLoss * (numel(idx)/numSamples);
+            epochLoss = epochLoss + batchLoss;
         end
-
+        epochLoss = epochLoss / numel(batches);
         loss_hist(ep) = epochLoss;
         if config.model.use_plateau_stop && ep > window
             mavg = mean(loss_hist(ep-window:ep-1));

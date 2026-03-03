@@ -32,20 +32,20 @@ config.model.target_mse = 5e-4;  % true MSE — adjust if needed
 config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 
-% Adam typically saturates within 100-300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 300;
+% Adam typically saturates within -300 epochs; plateau guard stops early.
+config.model.max_epochs_output = 500;
 config.model.eta_output = 0.005;
-config.model.max_epochs_candidate = 300;
+config.model.max_epochs_candidate = 500;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
 % Moving-average plateau stop: after each epoch, compare current loss/metric
 % against the mean of the previous `moving_avg_window` epochs.
 % If improvement <= plateau_min_delta, training stops (plateau detected).
-config.model.moving_avg_window = 20;      % number of previous epochs to average
+config.model.moving_avg_window = 50;      % number of previous epochs to average
 % use_plateau_stop: true  -> son 20 epoch iyileşmesi köyüleşirse erken dur
 %                  false -> plateau kontrolü devre dışı, full epoch koş
-config.model.use_plateau_stop = false;
+config.model.use_plateau_stop = true;
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
@@ -190,8 +190,12 @@ while numel(W_hidden) < config.model.max_hidden_units
         W_hidden(end) = [];
         w_o = w_o_prev;
         fprintf('Undo candidate #%d: improvement %.3g < threshold %.3g. Stopping growth.\n', h, improvement, config.model.min_mse_improvement);
+
         break;
+      
     end
+
+
 
     mse_hist(end+1) = current_mse;
     Yhat_stage_raw = Yhat_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
@@ -207,7 +211,12 @@ while numel(W_hidden) < config.model.max_hidden_units
     if ~isnan(outputTrainInfo.plateau_epoch)
         fprintf('Output layer re-train plateau at epoch %d (ran %d/%d epochs).\n', ...
             outputTrainInfo.plateau_epoch, outputTrainInfo.epochs_run, config.model.max_epochs_output);
+    else
+        fprintf('Output layer re-train used %d/%d epochs (no plateau).\n', ...
+            outputTrainInfo.epochs_run, config.model.max_epochs_output);
     end
+    config.model.eta_output = config.model.eta_output / 100;
+    fprintf('Output learning rate reduced to %.2e for next hidden unit.\n', config.model.eta_output);
     [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 end
 
@@ -797,7 +806,7 @@ function [plotHandle, figHandle] = updateLossFigure(plotHandle, figHandle, mse_h
         grid on;
         xlabel('Hidden Units');
         ylabel('Train MSE');
-        title('Train MSE vs Hidden Units');
+        title('Loss Graph');
     else
         set(plotHandle, 'XData', xVals, 'YData', mse_hist);
     end

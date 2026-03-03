@@ -20,8 +20,8 @@ config.prediction.n_steps = 20; % default N-step horizon (override auto when dis
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [1,2,3,4]; % example: u(t), u(t-1) (u(t) kaldır, dryer2'de dead time var)
-config.regressors.y = [1,2,3,4]; % example: y(t-1), y(t-2)
+config.regressors.u = [1,2]; % example: u(t), u(t-1) (u(t) kaldır, dryer2'de dead time var)
+config.regressors.y = [1,2]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
@@ -32,11 +32,11 @@ config.model.target_mse = 5e-4;  % true MSE — adjust if needed
 config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 
-% Adam typically saturates within 100-300 epochs; plateau guard stops early.
+% Adam typically saturates within -300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
-config.model.eta_output = 0.0005;
+config.model.eta_output = 0.005;
 config.model.max_epochs_candidate = 100;
-config.model.eta_candidate = 0.0003;
+config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
 % Moving-average plateau stop: after each epoch, compare current loss/metric
@@ -50,8 +50,8 @@ config.model.use_plateau_stop = true;
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
 config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
-config.training.candidate_pool_size = 1;    % train this many candidates, pick best scored
-config.training.use_parfor_pool = false;     % true: train candidate pool with parfor (if available)
+config.training.candidate_pool_size = 10;    % train this many candidates, pick best scored
+config.training.use_parfor_pool = true;     % true: train candidate pool with parfor (if available)
 
 % ------------------
 % DATA
@@ -62,7 +62,7 @@ config.training.use_parfor_pool = false;     % true: train candidate pool with p
 if isfield(config.prediction, 'auto_full_horizon') && config.prediction.auto_full_horizon
     maxLag = getMaxLagFromRegressors(config.regressors);
     maxStepsTr = numel(Ytr) - maxLag;
-    maxStepsVa = numel(Yva) - maxLag - 1;
+    maxStepsVa = numel(Yva) - maxLag ;
     autoSteps = min([maxStepsTr, maxStepsVa]);
     if autoSteps < 1
         error('Not enough samples to build at least one full-horizon trajectory.');

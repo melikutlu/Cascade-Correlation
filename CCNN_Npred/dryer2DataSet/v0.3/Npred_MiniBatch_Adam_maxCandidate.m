@@ -33,16 +33,16 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 50;
-config.model.eta_output = 0.005;
-config.model.max_epochs_candidate = 50;
-config.model.eta_candidate = 0.003;
+config.model.max_epochs_output = 100;
+config.model.eta_output = 0.0005;
+config.model.max_epochs_candidate = 100;
+config.model.eta_candidate = 0.0003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
 % Moving-average plateau stop: after each epoch, compare current loss/metric
 % against the mean of the previous `moving_avg_window` epochs.
 % If improvement <= plateau_min_delta, training stops (plateau detected).
-config.model.moving_avg_window = 20;      % number of previous epochs to average
+config.model.moving_avg_window = 50;      % number of previous epochs to average
 % use_plateau_stop: true  -> son 20 epoch iyileşmesi köyüleşirse erken dur
 %                  false -> plateau kontrolü devre dışı, full epoch koş
 config.model.use_plateau_stop = true;

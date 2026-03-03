@@ -211,7 +211,12 @@ while numel(W_hidden) < config.model.max_hidden_units
     if ~isnan(outputTrainInfo.plateau_epoch)
         fprintf('Output layer re-train plateau at epoch %d (ran %d/%d epochs).\n', ...
             outputTrainInfo.plateau_epoch, outputTrainInfo.epochs_run, config.model.max_epochs_output);
+    else
+        fprintf('Output layer re-train used %d/%d epochs (no plateau).\n', ...
+            outputTrainInfo.epochs_run, config.model.max_epochs_output);
     end
+    config.model.eta_output = config.model.eta_output / 10;
+    fprintf('Output learning rate reduced to %.2e for next hidden unit.\n', config.model.eta_output);
     [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 end
 

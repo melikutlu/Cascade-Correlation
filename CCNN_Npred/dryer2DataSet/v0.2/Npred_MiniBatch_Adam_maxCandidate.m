@@ -33,9 +33,9 @@ config.model.force_hidden_growth = false;
 config.model.target_mse = 5e-4;
 config.model.min_mse_improvement = 1e-6;
 
-config.model.max_epochs_output    = 500;
+config.model.max_epochs_output    = 5;
 config.model.eta_output           = 0.005;
-config.model.max_epochs_candidate = 300;
+config.model.max_epochs_candidate = 3;
 config.model.eta_candidate        = 0.003;
 config.model.plateau_min_delta    = 0;
 
@@ -46,7 +46,7 @@ config.training = struct();
 config.training.batch_size_output    = 32;
 config.training.batch_size_candidate = 32;
 config.training.candidate_pool_size  = 5;
-config.training.use_parfor_pool      = true;
+config.training.use_parfor_pool      = false;
 
 % ------------------
 % DATA
@@ -600,7 +600,9 @@ function [X0, Useq, Tseq] = createTrajectoryDataset(U, Y, config, N)
 end
 
 function Yhat = recursivePredictFullSeries(U, Y, W_hidden, w_o, g, config)
-    N = length(Y); Yhat = zeros(N,1); if N>=1; Yhat(1)=Y(1); end
+    N = length(Y); 
+    Yhat = zeros(N,1); 
+    if N>=1; Yhat(1)=Y(1); end
     ulags = config.regressors.u(:)'; ylags = config.regressors.y(:)';
     nu = numel(ulags); ny = numel(ylags);
     for k = 2:N

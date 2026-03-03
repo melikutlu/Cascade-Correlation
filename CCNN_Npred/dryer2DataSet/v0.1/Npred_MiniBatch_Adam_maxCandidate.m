@@ -16,8 +16,8 @@ config.data.val_ratio = 0.5;
 
 config.norm_method = 'ZScore';
 
-config.prediction.n_steps = 1; % default N-step horizon (override auto when disabled)
-config.prediction.auto_full_horizon = false; % set true to span full usable data length
+config.prediction.n_steps = 20; % default N-step horizon (override auto when disabled)
+config.prediction.auto_full_horizon = true; % set true to span full usable data length
 
 % regressors (user can change)
 config.regressors.u = [1,2,3,4]; % example: u(t), u(t-1) (u(t) kaldır, dryer2'de dead time var)
@@ -33,9 +33,9 @@ config.model.min_mse_improvement = 1e-6; % early stop threshold
 
 
 % Adam typically saturates within 100-300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 500;
+config.model.max_epochs_output = 50;
 config.model.eta_output = 0.005;
-config.model.max_epochs_candidate = 300;
+config.model.max_epochs_candidate = 150;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 

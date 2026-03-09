@@ -42,6 +42,7 @@ config.regressors.include_bias = false;
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
 config.model.activation = 'diff';
+config.model.hidden_orders = [];
 config.model.max_hidden_units = 10;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
@@ -50,7 +51,7 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 % Adam typically saturates within -300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
-config.model.eta_output = 0.0005;
+config.model.eta_output = 0.005;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
@@ -64,7 +65,7 @@ config.model.use_plateau_stop = false;
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
 config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
-config.training.candidate_pool_size = 1;    % train this many candidates, pick best scored
+config.training.candidate_pool_size = 3;    % train this many candidates, pick best scored
 config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
 
 % ------------------
@@ -146,24 +147,28 @@ while numel(W_hidden) < config.model.max_hidden_units
     bestCandW = [];
     bestCandInfo = struct('epochs_run', 0, 'plateau_epoch', NaN, 'metric_history', []);
 
-    candWeights = cell(poolSize,1);
-    candMetrics = -inf(poolSize,1);
-    candInfos = cell(poolSize,1);
+    candWeights = cell(poolSize*2,1);
+    candMetrics = -inf(poolSize*2,1);
+    candInfos = cell(poolSize*2,1);
 
     if useParforPool
-        parfor p = 1:poolSize
-            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
-            candWeights{p} = tmp_w;
-            candMetrics(p) = tmp_metric;
-            candInfos{p} = tmp_info;
-            
+        parfor idx = 1:(poolSize*2)
+            orderFlag = 1 + mod(idx-1, 2); % 1 or 2 alternating
+            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config, orderFlag);
+            candWeights{idx} = tmp_w;
+            candMetrics(idx) = tmp_metric;
+            candInfos{idx} = tmp_info;
         end
     else
+        idx = 1;
         for p = 1:poolSize
-            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
-            candWeights{p} = tmp_w;
-            candMetrics(p) = tmp_metric;
-            candInfos{p} = tmp_info;
+            for ord = 1:2
+                [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config, ord);
+                candWeights{idx} = tmp_w;
+                candMetrics(idx) = tmp_metric;
+                candInfos{idx} = tmp_info;
+                idx = idx + 1;
+            end
         end
     end
 
@@ -178,7 +183,11 @@ while numel(W_hidden) < config.model.max_hidden_units
     candInfo = bestCandInfo;
     candidateEpochHistory(end+1) = candInfo.epochs_run; %#ok<AGROW>
     candidatePlateauHistory(end+1) = candInfo.plateau_epoch; %#ok<AGROW>
-    fprintf('Selected candidate for #%d | score: %.6g\n', h, cand_metric);
+    orderLabel = '1st-deriv';
+    if isfield(candInfo, 'selected_order') && candInfo.selected_order == 2
+        orderLabel = '2nd-deriv';
+    end
+    fprintf('Selected candidate for #%d | score: %.6g | order=%s\n', h, cand_metric, orderLabel);
     if ~isnan(candInfo.plateau_epoch)
         fprintf('Selected candidate plateau at epoch %d (ran %d/%d epochs).\n', ...
             candInfo.plateau_epoch, candInfo.epochs_run, config.model.max_epochs_candidate);
@@ -196,6 +205,14 @@ while numel(W_hidden) < config.model.max_hidden_units
     % tentatively add candidate
     w_o_prev = w_o;
     W_hidden{end+1} = w_h;
+    if ~isfield(config.model,'hidden_orders') || isempty(config.model.hidden_orders)
+        config.model.hidden_orders = [];
+    end
+    if isfield(candInfo,'selected_order') && ~isempty(candInfo.selected_order)
+        config.model.hidden_orders(end+1) = candInfo.selected_order;
+    else
+        config.model.hidden_orders(end+1) = 1;
+    end
     % Warm-start: mevcut output agirliklarini aynen koru,
     % sadece yeni candidate icin bir cikis agirligi ekle.
     w_o = [w_o_prev; dlarray(0)];
@@ -212,6 +229,9 @@ while numel(W_hidden) < config.model.max_hidden_units
         % undo: w_o_prev'i geri yükle (retrain sonrası tüm elemanlar
         % yeni hidden unit için güncellendi, w_o(1:end-1) yanlış olur)
         W_hidden(end) = [];
+        if isfield(config.model,'hidden_orders') && ~isempty(config.model.hidden_orders)
+            config.model.hidden_orders(end) = [];
+        end
         w_o = w_o_prev;
         fprintf('Undo candidate #%d: improvement %.3g < threshold %.3g. Stopping growth.\n', h, improvement, config.model.min_mse_improvement);
 
@@ -237,7 +257,7 @@ while numel(W_hidden) < config.model.max_hidden_units
         fprintf('Output layer re-train used %d/%d epochs (no plateau).\n', ...
             outputTrainInfo.epochs_run, config.model.max_epochs_output);
     end
-    config.model.eta_output = config.model.eta_output / 2;
+    config.model.eta_output = config.model.eta_output / 10;
     fprintf('Output learning rate reduced to %.2e for next hidden unit.\n', config.model.eta_output);
     [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 end
@@ -270,6 +290,9 @@ logInfo.plateau_min_delta = config.model.plateau_min_delta;
 logInfo.moving_avg_window = config.model.moving_avg_window;
 logInfo.hidden_units = numel(W_hidden);
 logInfo.max_hidden_units = config.model.max_hidden_units;
+if isfield(config.model,'hidden_orders')
+    logInfo.hidden_orders = config.model.hidden_orders;
+end
 logInfo.regressor_count = numel(config.regressors.u) + numel(config.regressors.y);
 logInfo.regressors_u = config.regressors.u;
 logInfo.regressors_y = config.regressors.y;

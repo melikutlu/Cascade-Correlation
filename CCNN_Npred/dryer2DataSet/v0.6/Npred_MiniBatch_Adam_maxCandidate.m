@@ -35,8 +35,8 @@ config.prediction.n_steps = 20; % default N-step horizon (override auto when dis
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [1,2,3,4]; % example: u(t), u(t-1) (u(t) kaldır, dryer2'de dead time var)
-config.regressors.y = [1,2,3,4]; % example: y(t-1), y(t-2)
+config.regressors.u = [1]; % example: u(t), u(t-1) (u(t) kaldır, dryer2'de dead time var)
+config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
@@ -50,7 +50,7 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 % Adam typically saturates within -300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
-config.model.eta_output = 0.005;
+config.model.eta_output = 0.0005;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
@@ -64,10 +64,10 @@ config.model.use_plateau_stop = false;
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
 config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
-config.training.candidate_pool_size = 1;    % train this many candidates, pick best scored
+config.training.candidate_pool_size = 2;    % train this many candidates, pick best scored
 config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
 
-[% ------------------
+% ------------------
 % MAIN SCRIPT (DATA load, training, logging, plotting)
 % ------------------]
 % Allow quick testing with a local mrdamper.mat placed in v0.6/mldamper
@@ -256,7 +256,7 @@ while numel(W_hidden) < config.model.max_hidden_units
         fprintf('Output layer re-train used %d/%d epochs (no plateau).\n', ...
             outputTrainInfo.epochs_run, config.model.max_epochs_output);
     end
-    config.model.eta_output = config.model.eta_output / 10;
+    config.model.eta_output = config.model.eta_output / 2;
     fprintf('Output learning rate reduced to %.2e for next hidden unit.\n', config.model.eta_output);
     [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 end

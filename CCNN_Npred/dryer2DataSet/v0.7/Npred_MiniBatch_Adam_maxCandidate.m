@@ -41,8 +41,8 @@ config.regressors.include_bias = false;
 
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
-config.model.activation = 'diff';
-config.model.hidden_orders = [];
+config.model.activation = 'linear';
+config.model.hidden_orders = [0,1]; % hidden_orders = [1] → sadece 1. türevi dener. %hidden_orders = [0 2] → türevsiz ve sadece 2. türevi dener.
 config.model.max_hidden_units = 10;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
@@ -51,7 +51,7 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 % Adam typically saturates within -300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
-config.model.eta_output = 0.005;
+config.model.eta_output = 0.0005;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
@@ -65,7 +65,7 @@ config.model.use_plateau_stop = false;
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
 config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
-config.training.candidate_pool_size = 3;    % train this many candidates, pick best scored
+config.training.candidate_pool_size = 1;    % train this many candidates, pick best scored
 config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
 
 % ------------------
@@ -89,8 +89,8 @@ Npred = config.prediction.n_steps;
 [X0_tr, Utr_seq, Ttr_seq] = createTrajectoryDataset(Utr, Ytr, config, Npred);
 [X0_va, Uva_seq, Tva_seq] = createTrajectoryDataset(Uva, Yva, config, Npred);
 
-% activation
-g = @(x) tanh(x);
+% activation (resolve from config)
+g = resolveActivation(config.model.activation);
 
 % initialize
 W_hidden = {};
@@ -139,6 +139,15 @@ while numel(W_hidden) < config.model.max_hidden_units
 
     h = numel(W_hidden) + 1;
     poolSize = max(1, round(config.training.candidate_pool_size));
+    % Candidate orders: default [1 2]. Prefer config.model.order, then hidden_orders if given
+    candOrders = [1 2];
+    if isfield(config, 'model') && isfield(config.model, 'order') && ~isempty(config.model.order)
+        candOrders = config.model.order(:)';
+    elseif isfield(config, 'model') && isfield(config.model, 'hidden_orders') && ~isempty(config.model.hidden_orders)
+        candOrders = config.model.hidden_orders(:)';
+    end
+    candOrders = candOrders(:)';
+
     useParforPool = config.training.use_parfor_pool && license('test','Distrib_Computing_Toolbox') && ~isempty(ver('parallel'));
     fprintf('\nTraining candidate pool for hidden #%d (pool=%d, parfor=%d)\n', h, poolSize, double(useParforPool));
 
@@ -147,13 +156,14 @@ while numel(W_hidden) < config.model.max_hidden_units
     bestCandW = [];
     bestCandInfo = struct('epochs_run', 0, 'plateau_epoch', NaN, 'metric_history', []);
 
-    candWeights = cell(poolSize*2,1);
-    candMetrics = -inf(poolSize*2,1);
-    candInfos = cell(poolSize*2,1);
+    totalCand = poolSize * numel(candOrders);
+    candWeights = cell(totalCand,1);
+    candMetrics = -inf(totalCand,1);
+    candInfos = cell(totalCand,1);
 
     if useParforPool
-        parfor idx = 1:(poolSize*2)
-            orderFlag = 1 + mod(idx-1, 2); % 1 or 2 alternating
+        parfor idx = 1:totalCand
+            orderFlag = candOrders(1 + mod(idx-1, numel(candOrders))); % rotate through configured orders
             [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config, orderFlag);
             candWeights{idx} = tmp_w;
             candMetrics(idx) = tmp_metric;
@@ -162,7 +172,7 @@ while numel(W_hidden) < config.model.max_hidden_units
     else
         idx = 1;
         for p = 1:poolSize
-            for ord = 1:2
+            for ord = candOrders
                 [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config, ord);
                 candWeights{idx} = tmp_w;
                 candMetrics(idx) = tmp_metric;
@@ -184,8 +194,12 @@ while numel(W_hidden) < config.model.max_hidden_units
     candidateEpochHistory(end+1) = candInfo.epochs_run; %#ok<AGROW>
     candidatePlateauHistory(end+1) = candInfo.plateau_epoch; %#ok<AGROW>
     orderLabel = '1st-deriv';
-    if isfield(candInfo, 'selected_order') && candInfo.selected_order == 2
-        orderLabel = '2nd-deriv';
+    if isfield(candInfo, 'selected_order')
+        if candInfo.selected_order == 2
+            orderLabel = '2nd-deriv';
+        elseif candInfo.selected_order == 0
+            orderLabel = 'no-deriv';
+        end
     end
     fprintf('Selected candidate for #%d | score: %.6g | order=%s\n', h, cand_metric, orderLabel);
     if ~isnan(candInfo.plateau_epoch)
@@ -257,7 +271,7 @@ while numel(W_hidden) < config.model.max_hidden_units
         fprintf('Output layer re-train used %d/%d epochs (no plateau).\n', ...
             outputTrainInfo.epochs_run, config.model.max_epochs_output);
     end
-    config.model.eta_output = config.model.eta_output / 10;
+    config.model.eta_output = config.model.eta_output / 2;
     fprintf('Output learning rate reduced to %.2e for next hidden unit.\n', config.model.eta_output);
     [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 end

@@ -1,14 +1,11 @@
 function [a, state] = applyHiddenActivation(z, state, g, config, order)
-    % Apply activation with time-difference transforms; supports first or second order.
+    % Apply activation with optional finite-difference order (0,1,2).
+    % order=0: g(z); order=1: g(diff1); order=2: g(diff2).
     if nargin < 2 || isempty(state)
         state = struct('prev1', zeros(size(z), 'like', z), 'prev2', zeros(size(z), 'like', z));
     end
     if nargin < 5 || isempty(order)
         order = 1;
-    end
-    mode = 'tanh';
-    if isfield(config, 'model') && isfield(config.model, 'activation') && ~isempty(config.model.activation)
-        mode = lower(string(config.model.activation));
     end
 
     % compute finite differences
@@ -17,19 +14,13 @@ function [a, state] = applyHiddenActivation(z, state, g, config, order)
     state.prev2 = state.prev1;
     state.prev1 = z;
 
-    switch mode
-        case {"diff", "diff-only", "diff-tanh", "diff_tanh"}
-            if order == 2
-                base = diff2;
-            else
-                base = diff1;
-            end
-            if contains(mode, 'tanh')
-                a = g(base);
-            else
-                a = base;
-            end
-        otherwise
-            a = g(z);
+    if order <= 0
+        base = z;      % no diff
+    elseif order == 1
+        base = diff1;  % first diff
+    else
+        base = diff2;  % second diff
     end
+
+    a = g(base);
 end

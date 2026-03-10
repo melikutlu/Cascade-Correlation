@@ -23,11 +23,11 @@ end
 % CONFIG
 % ----------------
 config = struct();
-config.data.source = 'dryer2';
-config.data.dryer2.sampling_time = 0.08; % s
+config.data.source = 'mrdamper';
+config.data.dryer2.sampling_time =0.005; % s
 
-config.data.train_ratio = 0.5;
-config.data.val_ratio = 0.5;
+config.data.train_ratio = 0.8;
+config.data.val_ratio = 0.2;
 
 config.norm_method = 'zscore';
 
@@ -41,7 +41,7 @@ config.regressors.include_bias = false;
 
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
-config.model.activation = 'diff';
+config.model.activation = 'tanh';
 config.model.max_hidden_units = 10;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
@@ -50,7 +50,7 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 % Adam typically saturates within -300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
-config.model.eta_output = 0.005;
+config.model.eta_output = 0.0005;
 config.model.max_epochs_candidate = 100;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
@@ -67,7 +67,29 @@ config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit
 config.training.candidate_pool_size = 1;    % train this many candidates, pick best scored
 config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
 
-[% ------------------
+% ---------- Recommended defaults for mrdamper tests ----------
+% If you set `config.data.source = 'mrdamper'`, these sensible defaults
+% are applied so you can drop `mrdamper.mat` into v0.6/mldamper and run.
+if isfield(config,'data') && isfield(config.data,'source') && strcmpi(config.data.source,'mrdamper')
+    config.data.mrdamper = struct();
+    config.data.mrdamper.matfile = fullfile(scriptDir, 'mldamper', 'mrdamper.mat');
+    % The loader will use the first 3000 samples for estimation and the rest
+    % for validation (ze=1:3000, zv=3001:end). Ensure your data length >=3001.
+    config.data.train_ratio = 0.5; % kept for compatibility (not used by fixed 3000 split)
+    config.data.val_ratio = 0.5;
+    % Prediction horizon and regressors — adjust for MR damper dynamics if needed
+    config.prediction.n_steps = 20;
+    config.prediction.auto_full_horizon = false;
+    config.regressors.u = [1,2,3];
+    config.regressors.y = [1,2,3];
+    config.regressors.include_bias = false;
+    config.norm_method = 'zscore';
+    % Training defaults (tweak if training is slow/unstable)
+    config.model.max_hidden_units = 10;
+    config.model.max_epochs_output = 100;
+    config.model.max_epochs_candidate = 100;
+end
+% ------------------
 % MAIN SCRIPT (DATA load, training, logging, plotting)
 % ------------------]
 % Allow quick testing with a local mrdamper.mat placed in v0.6/mldamper
@@ -256,7 +278,7 @@ while numel(W_hidden) < config.model.max_hidden_units
         fprintf('Output layer re-train used %d/%d epochs (no plateau).\n', ...
             outputTrainInfo.epochs_run, config.model.max_epochs_output);
     end
-    config.model.eta_output = config.model.eta_output / 10;
+    config.model.eta_output = config.model.eta_output / 2;
     fprintf('Output learning rate reduced to %.2e for next hidden unit.\n', config.model.eta_output);
     [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 end

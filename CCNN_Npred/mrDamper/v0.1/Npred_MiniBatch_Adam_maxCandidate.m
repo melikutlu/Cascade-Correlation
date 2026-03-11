@@ -35,31 +35,31 @@ config.prediction.n_steps = 20; % default N-step horizon (override auto when dis
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
 
 % regressors (user can change)
-config.regressors.u = [1,2,3,4]; % example: u(t), u(t-1) (u(t) kaldır, dryer2'de dead time var)
-config.regressors.y = [1,2,3,4]; % example: y(t-1), y(t-2)
+config.regressors.u = [1]; % example: u(t), u(t-1) (u(t) kaldır, dryer2'de dead time var)
+config.regressors.y = [1]; % example: y(t-1), y(t-2)
 config.regressors.include_bias = false;
 
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
-config.model.activation = 'tanh';
-config.model.max_hidden_units = 0;
+config.model.activation = 'diff';
+config.model.max_hidden_units = 100;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
-config.model.min_mse_improvement = 1e-4; % early stop threshold
+config.model.min_mse_improvement = 1e-4; % early stop threshold 
 
 
 % Adam typically saturates within -300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 500;
-config.model.eta_output = 0.0005;
-config.model.max_epochs_candidate = 100;
-config.model.eta_candidate = 0.003;
+config.model.max_epochs_output = 300;
+config.model.eta_output = 0.005;
+config.model.max_epochs_candidate = 300;
+config.model.eta_candidate = 0.03;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
 % Moving-average plateau stop: after each epoch, compare current loss/metric
 % against the mean of the previous `moving_avg_window` epochs.
 % If improvement <= plateau_min_delta, training stops (plateau detected).
 config.model.moving_avg_window = 20;      % number of previous epochs to average
-config.model.use_plateau_stop = false;
+config.model.use_plateau_stop = true;
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates

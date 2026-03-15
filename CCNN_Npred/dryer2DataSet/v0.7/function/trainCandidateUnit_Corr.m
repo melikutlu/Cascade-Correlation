@@ -6,7 +6,7 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
 
     d = size(X0,2) + numel(W_hidden); % candidate input dim
     w_h = dlarray(randn(d,1)*0.01);
-
+    
     X0_d = dlarray(X0); 
     U_d = dlarray(U); 
     T_d = dlarray(T);

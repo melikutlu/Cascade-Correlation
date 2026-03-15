@@ -42,7 +42,7 @@ config.regressors.include_bias = false;
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
 config.model.activation = 'linear';
-config.model.hidden_orders = [0,1]; % hidden_orders = [1] → sadece 1. türevi dener. %hidden_orders = [0 2] → türevsiz ve sadece 2. türevi dener.
+config.model.hidden_orders = [1]; % hidden_orders = [1] → sadece 1. türevi dener. %hidden_orders = [0 2] → türevsiz ve sadece 2. türevi dener.
 config.model.max_hidden_units = 10;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed

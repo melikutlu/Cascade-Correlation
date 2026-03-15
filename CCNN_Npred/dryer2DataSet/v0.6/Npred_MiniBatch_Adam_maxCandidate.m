@@ -67,29 +67,6 @@ config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit
 config.training.candidate_pool_size = 2;    % train this many candidates, pick best scored
 config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
 
-% ------------------
-% MAIN SCRIPT (DATA load, training, logging, plotting)
-% ------------------]
-% Allow quick testing with a local mrdamper.mat placed in v0.6/mldamper
-mrdampPath = fullfile(scriptDir, 'mldamper', 'mrdamper.mat');
-if exist(mrdampPath, 'file')
-    fprintf('Loading test dataset from %s\n', mrdampPath);
-    s = load(mrdampPath);
-    if isfield(s,'Utr_raw') && isfield(s,'Ytr_raw') && isfield(s,'Uva_raw') && isfield(s,'Yva_raw')
-        Utr_raw = s.Utr_raw; Ytr_raw = s.Ytr_raw; Uva_raw = s.Uva_raw; Yva_raw = s.Yva_raw;
-    elseif isfield(s,'U') && isfield(s,'Y')
-        U = s.U; Y = s.Y;
-        n = numel(Y);
-        ntr = floor(n * config.data.train_ratio);
-        Utr_raw = U(1:ntr); Ytr_raw = Y(1:ntr);
-        Uva_raw = U(ntr+1:end); Yva_raw = Y(ntr+1:end);
-    else
-        vars = fieldnames(s);
-        error('mrdamper.mat found but expected variables not present. Found: %s', strjoin(vars,', '));
-    end
-else
-    [Utr_raw, Ytr_raw, Uva_raw, Yva_raw] = loadDataByConfig_min(config);
-end
 [Utr, Ytr, Uva, Yva, norm_stats] = normalizeData_min(config.norm_method, Utr_raw, Ytr_raw, Uva_raw, Yva_raw);
 
 if isfield(config.prediction, 'auto_full_horizon') && config.prediction.auto_full_horizon

@@ -3,7 +3,7 @@ function a = applyHiddenActivation(z, z_prev, g, config)
     if nargin < 2 || isempty(z_prev)
         z_prev = zeros(size(z), 'like', z);
     end
-    mode = 'tanh';
+    mode;
     if isfield(config, 'model') && isfield(config.model, 'activation') && ~isempty(config.model.activation)
         mode = lower(string(config.model.activation));
     end

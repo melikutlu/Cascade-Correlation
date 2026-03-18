@@ -15,10 +15,11 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
         yhist(:, ylags(j)) = X0(:, nu+j);
     end
 
-    % track previous pre-activation per hidden for time-difference modes
+    % Calculate initial z_prev from X0 regressors (first time point before t=1)
     z_prev = cell(numel(W_hidden),1);
+    x_init = dlarray(X0);
     for h=1:numel(W_hidden)
-        z_prev{h} = dlarray(zeros(M,1));
+        z_prev{h} = x_init * W_hidden{h};
     end
 
     for t=1:N

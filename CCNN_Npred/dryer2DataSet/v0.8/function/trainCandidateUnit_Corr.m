@@ -32,10 +32,24 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
             Tb = T_d(idx,:);
             it = it + 1;
             [loss, ~, grad] = dlfeval(@loss_candidate_corr, w_h, Xb, Ub, Tb, W_hidden, w_o_d, g, config);
+            
+            % Gradient clipping to prevent explosion
+            max_grad_norm = 10;
+            grad_norm = sqrt(sum(grad.^2));
+            if grad_norm > max_grad_norm
+                grad = grad * (max_grad_norm / grad_norm);
+            end
+            
             [w_h, avgG, avgGSq] = adamupdate(w_h, grad, avgG, avgGSq, it, config.model.eta_candidate);
         end
 
         metricVal = evaluateCandidateMetric(w_h, X0_d, U_d, T_d, W_hidden, w_o_d, g, config);
+        
+        % Guard against NaN/Inf
+        if ~isfinite(metricVal)
+            metricVal = -1e10;  % penalize invalid metrics
+        end
+        
         metric_hist(ep) = metricVal;
         
         

@@ -53,6 +53,14 @@ function [w_o,mse,info,hFig] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g
             Xb = X0(idx,:); Ub = U(idx,:); Tb = T(idx,:);
             it = it+1;
             [L,grad] = dlfeval(@loss_output_traj, w_o, Xb, Ub, Tb, W_hidden, g, config);
+            
+            % Gradient clipping to prevent explosion
+            max_grad_norm = 10;
+            grad_norm = sqrt(sum(grad.^2));
+            if grad_norm > max_grad_norm
+                grad = grad * (max_grad_norm / grad_norm);
+            end
+            
             [w_o, avgG, avgGSq] = adamupdate(w_o, grad, avgG, avgGSq, it, config.model.eta_output);
             batchLoss = gather(L);
             epochLoss = epochLoss + batchLoss;

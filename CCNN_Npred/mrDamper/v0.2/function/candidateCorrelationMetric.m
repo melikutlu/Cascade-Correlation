@@ -20,12 +20,19 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
         yhist(:, ylags(j)) = X0(:, nu+j);
     end
 
-    % track previous pre-activation per hidden and candidate for diff modes
+    % Initialize z_prev for all hidden units from t=0 regressors (X0) with cascading
     z_prev_hidden = cell(numel(W_hidden),1);
+    x_t0 = dlarray(X0);  % ← t=0 regressors
+    
     for h=1:numel(W_hidden)
-        z_prev_hidden{h} = dlarray(zeros(M,1));
+        z = x_t0 * W_hidden{h};  % ← z_h(t=0)
+        a = applyHiddenActivation(z, dlarray(zeros(M,1)), g, config);
+        z_prev_hidden{h} = z;  % ← Store real z(t=0)
+        x_t0 = [x_t0, a];  % ← Extend cascade
     end
-    z_prev_cand = dlarray(zeros(M,1));
+    
+    % Initialize candidate z_prev from final cascaded x at t=0
+    z_prev_cand = x_t0 * w_h;  % ← Candidate z at t=0
 
     for t=1:N
         % u part

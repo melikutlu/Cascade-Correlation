@@ -13,9 +13,10 @@ function a = applyHiddenActivation(z, z_prev, g, config)
             modeStr = lower(string(config.model.activation));
         end
         switch modeStr
-            case {"tanh","diff-tanh", "diff_tanh"}
+            case {"tanh"}
                 g = @(x) tanh(x);
-        
+            case {"diff-tanh", "diff_tanh"}
+                g = @(x) tanh(x);
             otherwise
                 g = @(x) x;
         end

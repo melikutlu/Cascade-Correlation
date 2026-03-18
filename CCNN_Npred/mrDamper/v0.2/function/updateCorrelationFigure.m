@@ -8,10 +8,7 @@ function [plotHandle, figHandle] = updateCorrelationFigure(plotHandle, figHandle
     end
     if isempty(plotHandle) || ~isvalid(plotHandle)
         clf(figHandle);
-        plotHandle = plot(xVals, corrHist, '-o', 'LineWidth', 1.5, ...
-        'MarkerSize', 4, ...
-        'MarkerEdgeColor', 'b', ...
-        'MarkerFaceColor', 'b');
+        plotHandle = plot(xVals, corrHist, '-o', 'LineWidth', 1.4);
         grid on;
         xlabel('Candidate epochs (cumulative)');
         ylabel('Correlation metric');

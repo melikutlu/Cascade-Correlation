@@ -1,0 +1,34 @@
+OPTIMAL CONTROL HOMEWORK #3 RESULTS
+====================================
+
+PART A: FINITE-HORIZON LQR
+----------------------------
+Total cost J1: 2.767907
+Terminal cost: 0.000003
+Integral cost: 2.767904
+
+PART B: INFINITE-HORIZON LQR
+------------------------------
+Optimal gain K: [1.000000, 1.414214]
+Closed-loop eigenvalues: -0.707107 + 0.707107i, -0.707107 + -0.707107i
+Approximate cost J2 (0-20s): 2.767906
+
+PART C: BANG-BANG CONTROL
+--------------------------
+Switch time t1: 2.236068 s
+Final time tf: 4.472136 s
+Minimum time J3: 4.472136
+Final position: 5.000000 (target: 5.000000)
+Final velocity: 0.000136 (target: 0.000000)
+
+COMPARISON
+----------
+Rise time to 90% of target (4.5):
+  Finite LQR:   Inf s
+  Infinite LQR: Inf s
+  Bang-Bang:    4.472136 s
+
+Control effort (0-10s):
+  Finite LQR:   1.531470
+  Infinite LQR: 1.531757
+  Bang-Bang:    4.475000

@@ -1,0 +1,103 @@
+function [Utr, Ytr, Uva, Yva] = loadDataByConfig_min(config)
+    switch lower(config.data.source)
+        case 'twotankdata'
+            load twotankdata.mat; % must contain u,y
+            u = u(:); y = y(:);
+            w = config.data.twotank.warmup_samples;
+            u = u(w+1:end); y = y(w+1:end);
+            % optional filter
+            if isfield(config.data.twotank,'filter_cutoff') && config.data.twotank.filter_cutoff>0
+                fc = config.data.twotank.filter_cutoff; Ts = config.data.twotank.sampling_time;
+                a = 2*pi*fc*Ts / (1 + 2*pi*fc*Ts);
+                uf = zeros(size(u)); yf = zeros(size(y)); uf(1)=u(1); yf(1)=y(1);
+                for k=2:length(u)
+                    uf(k) = a*u(k) + (1-a)*uf(k-1);
+                    yf(k) = a*y(k) + (1-a)*yf(k-1);
+                end
+                u = uf; y = yf;
+            end
+            N = length(u); Ntr = floor(config.data.train_ratio * N);
+            Utr = u(1:Ntr); Ytr = y(1:Ntr); Uva = u(Ntr+1:end); Yva = y(Ntr+1:end);
+        case 'dryer2'
+            load dryer2; % contains u2, y2
+            Ts = config.data.dryer2.sampling_time;
+            z_full = iddata(y2(:), u2(:), Ts);
+            N_total = length(z_full.y);
+            train_end = floor(config.data.train_ratio * N_total);
+            val_end   = train_end + floor(config.data.val_ratio * N_total);
+            z1 = z_full(1:train_end);
+            z1f = detrend(z1);
+            z2 = z_full(train_end+1:val_end);
+            z2f = detrend(z2);
+            Utr = z1f.u; Ytr = z1f.y;
+            Uva = z2f.u; Yva = z2f.y;
+
+        case 'mrdamper'
+            % 1. MR damper verisini yükle
+            % Dosya yolunu kontrol et
+            if isfield(config.data, 'mrdamper') && isfield(config.data.mrdamper, 'matfile')
+                matFilePath = config.data.mrdamper.matfile;
+            else
+                % Varsayılan yol - script'in bulunduğu dizindeki mldamper klasörü
+                [scriptDir, ~, ~] = fileparts(mfilename('fullpath'));
+                matFilePath = fullfile(scriptDir, 'mldamper', 'mrdamper.mat');
+            end
+            
+            if ~exist(matFilePath, 'file')
+                error('MR damper data file not found at: %s', matFilePath);
+            end
+            
+            load(matFilePath); % Bu dosya 'F' ve 'V' değişkenlerini içermeli
+            
+            % 2. Değişken isimlerini kontrol et ve düzenle
+            % MATLAB dokümanına göre: F = hız (giriş), V = kuvvet (çıkış)
+            if ~exist('F', 'var') || ~exist('V', 'var')
+                % Farklı değişken isimleri olabilir, kontrol et
+                vars = who;
+                if length(vars) >= 2
+                    % İlk iki değişkeni kullan (genellikle input, output)
+                    fprintf('Warning: Using first two variables as input and output\n');
+                    U_raw = eval(vars{1}); % Birinci değişken
+                    Y_raw = eval(vars{2}); % İkinci değişken
+                else
+                    error('mrdamper.mat does not contain expected variables F and V');
+                end
+            else
+                U_raw = F(:); % Giriş: hız
+                Y_raw = V(:); % Çıkış: kuvvet
+            end
+            
+            % 3. Veriyi vektör formatına getir
+            U_raw = U_raw(:);
+            Y_raw = Y_raw(:);
+            
+            % 4. Veri uzunluğunu kontrol et
+            N = length(Y_raw);
+            fprintf('MR damper data loaded: %d samples\n', N);
+            
+            % 5. Eğitim/doğrulama bölme
+            % MATLAB dokümanında: ilk 3000 eğitim, kalan 499 doğrulama
+            if N >= 3499
+                % Tam veri seti varsa (3499 örnek)
+                Ntr = 3000; % Dokümanda sabit 3000
+                Utr = U_raw(1:Ntr);
+                Ytr = Y_raw(1:Ntr);
+                Uva = U_raw(Ntr+1:end);
+                Yva = Y_raw(Ntr+1:end);
+                fprintf('Using fixed split: %d training, %d validation samples\n', Ntr, length(Uva));
+            else
+                % Daha küçük bir veri seti varsa, oransal böl
+                Ntr = floor(config.data.train_ratio * N);
+                Utr = U_raw(1:Ntr);
+                Ytr = Y_raw(1:Ntr);
+                Uva = U_raw(Ntr+1:end);
+                Yva = Y_raw(Ntr+1:end);
+                fprintf('Using ratio-based split (%.2f): %d training, %d validation\n', ...
+                    config.data.train_ratio, Ntr, length(Uva));
+            end
+            
+        otherwise
+            error('Unknown data source: %s', config.data.source);
+        
+    end
+end

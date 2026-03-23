@@ -212,12 +212,12 @@ fprintf('\n=== PERFORMANS ANALİZLERİ ===\n');
 if config.plotting.enabled
     % --- A) EĞİTİM PERFORMANSI ---
     plotPerformanceSimple(T_train, Y_pred_stage1, X_output_input, ...
-        w_o_trained, 'EĞİTİM Verisi Performansı (Normalize)', config);
+        w_o_trained,W_hidden, 'Training Performance (Normalized)', config);
     
     % --- B) DOĞRULAMA PERFORMANSI ---
     evaluateModelOptimized(X_val_bias, T_val, w_o_stage1_trained, ...
         w_o_trained, W_hidden, g, ...
-        'DOĞRULAMA Verisi (One-Step Prediction - Normalize)', config);
+        'Validation Performance (Normalized)', config);
 end
 
 %% 7. SİMÜLASYON MODU (Free Run)
@@ -249,16 +249,16 @@ if config.plotting.show_simulation
         figure('Name', 'Simulation Result (Real World Units)', 'Color', 'w');
         plot(y_val_real, 'k', 'LineWidth', 1.5); hold on;
         plot(y_simulation_real, 'r--', 'LineWidth', 1.2);
-        title(sprintf('Simülasyon (Gerçek Birimler) - Fit: %.2f%%', fit_simulation_real));
-        legend('Gerçek Veri', 'Simülasyon');
+        title(sprintf('Simulation (Denormalized) - Fit: %.2f%%', fit_simulation_real));
+        legend('Orijinal Data', 'Simulation');
         ylabel('Output (Real)');
-        xlabel('Zaman Örneği');
+        xlabel('Number of Samples');
         grid on;
     end
 end
 
 %% N-STEP PREDICTION TEST
-n_test = 10; % Denemek istediğiniz adım sayısı
+n_test = 1; % Denemek istediğiniz adım sayısı
 [y_10_step_norm, fit_10] = predictNStepCCNN(U_val_norm, Y_val_norm, ...
     w_o_trained, W_hidden, g, config, n_test);
 
@@ -319,34 +319,27 @@ end
 
 function [U_train, Y_train, U_val, Y_val] = loadTwotankData(config)
     % Twotankdata için özel yükleyici
-    
     load twotankdata;
-    z_full = iddata(y, u, config.data.twotank.sampling_time);
-    
-    % Veriyi böl
-    N_total = length(z_full.y);
+
+    % Use raw data as-is (no filtering, no warmup trimming)
+    u = u(:);
+    y = y(:);
+
+    N_total = length(u);
     train_end = floor(N_total * config.data.train_ratio);
     val_end = train_end + floor(N_total * config.data.val_ratio);
-    
-    % Eğitim verisi
+
     if config.data.train_ratio > 0
-        z1 = z_full(1:train_end);
-        z1f = idfilt(z1, 3, config.data.twotank.filter_cutoff);
-        z1f = z1f(config.data.twotank.warmup_samples:end);
-        U_train = z1f.u;
-        Y_train = z1f.y;
+        U_train = u(1:train_end);
+        Y_train = y(1:train_end);
     else
         U_train = [];
         Y_train = [];
     end
-    
-    % Doğrulama verisi
+
     if config.data.val_ratio > 0
-        z2 = z_full(train_end+1:val_end);
-        z2f = idfilt(z2, 3, config.data.twotank.filter_cutoff);
-        z2f = z2f(config.data.twotank.warmup_samples:end);
-        U_val = z2f.u;
-        Y_val = z2f.y;
+        U_val = u(train_end+1:val_end);
+        Y_val = y(train_end+1:val_end);
     else
         U_val = [];
         Y_val = [];
@@ -686,23 +679,23 @@ function evaluateModelOptimized(X_val, T_val, w_stage1, w_final, W_hidden, g, pl
     Y_final = X_curr * w_final;
     fit_final = (1 - (sum((T_val - Y_final).^2) / sum((T_val - mean(T_val)).^2))) * 100;
     
-    fprintf('%s -> Başlangıç Fit: %.2f%% | Final Fit: %.2f%%\n', ...
+    fprintf('%s -> Initial Fit: %.2f%% | Final Fit: %.2f%%\n', ...
         plot_title, fit_stage1, fit_final);
     
     if config.plotting.enabled
         figure('Name', plot_title, 'Color', 'w');
         plot(T_val, 'k', 'LineWidth', 1.5); hold on;
-        plot(Y_stage1, 'r--', 'DisplayName', sprintf('Gizli Katman Yok - Fit: %.2f%%', fit_stage1));
-        plot(Y_final, 'b-', 'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden, fit_final));
+        plot(Y_stage1, 'r--', 'DisplayName', sprintf('No Hidden Layer - Fit: %.2f%%', fit_stage1));
+        plot(Y_final, 'b-', 'DisplayName', sprintf('%d Hidden Layer - Fit: %.2f%%', num_hidden, fit_final));
         legend('show', 'Location', 'best');
         title(sprintf('%s (Fit: %.2f%%)', plot_title, fit_final));
-        xlabel('Zaman Örneği');
-        ylabel('Çıkış (Normalize)');
+        xlabel('Number of Samples');
+        ylabel('Output (Normalized)');
         grid on;
     end
 end
 
-function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, config)
+function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final,W_hidden, title_txt, config)
     % Performans grafiği
     
     Y_final = X_final_input * w_final;
@@ -710,19 +703,19 @@ function plotPerformanceSimple(T, Y_stage1, X_final_input, w_final, title_txt, c
     fit_stage1 = (1 - (sum((T - Y_stage1).^2) / sum((T - mean(T)).^2))) * 100;
     
     % Gizli katman sayısı hesapla
-    num_hidden_calc = size(X_final_input, 2) - size(Y_stage1, 2);
+    num_hidden = length(W_hidden);
     
     if config.plotting.enabled
         figure('Name', title_txt, 'Color', 'w');
         plot(T, 'k', 'LineWidth', 1.5); hold on;
         plot(Y_stage1, 'r--', 'LineWidth', 1.2, ...
-            'DisplayName', sprintf('Gizli Katman Yok - Fit: %.2f%%', fit_stage1));
+            'DisplayName', sprintf('No Hidden Layer - Fit: %.2f%%', fit_stage1));
         plot(Y_final, 'b-', 'LineWidth', 1.2, ...
-            'DisplayName', sprintf('%d Gizli Katman - Fit: %.2f%%', num_hidden_calc, fit_final));
+            'DisplayName', sprintf('%d Hidden Layer - Fit: %.2f%%', num_hidden, fit_final));
         legend('show', 'Location', 'best');
         title(sprintf('%s (Fit: %.2f%%)', title_txt, fit_final));
-        xlabel('Zaman Örneği');
-        ylabel('Çıkış (Normalize)');
+        xlabel('Number of Samples');
+        ylabel('Output (Normalized)');
         grid on;
     end
 end

@@ -1,0 +1,6 @@
+v0.7 changes (first vs second derivative search per candidate)
+- For each pool slot, train two separate candidates: one with first-derivative activation, one with second-derivative activation. Selection is made across all trained candidates (2×poolSize).
+- Activation helper keeps prev1/prev2 and supports order=1 or 2; applies tanh if mode includes tanh.
+- forwardModelTrajectory, candidateCorrelationMetric, recursivePredictFullSeries honor per-hidden activation order stored in config.model.hidden_orders.
+- Selected hidden unit’s order (1st or 2nd diff) is printed to terminal and logged; hidden_orders appended on add and removed on undo.
+- Config initialized with empty hidden_orders; logs include hidden_orders for reproducibility.

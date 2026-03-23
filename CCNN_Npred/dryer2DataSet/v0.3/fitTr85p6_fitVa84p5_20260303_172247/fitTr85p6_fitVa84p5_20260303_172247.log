@@ -1,0 +1,30 @@
+CCNN Parameter Log
+Created      : 2026-03-03 17:22:47
+Script       : Npred_MiniBatch_Adam_maxCandidate.m
+Run folder   : fitTr85p6_fitVa84p5_20260303_172247
+
+eta_out=0.0000 | eta_cand=0.0030 | output_epochs=50/50 | hidden=3/10 | regressors=8 | cand_runs=4
+Output plateau epoch : none
+Output stopped by moving-avg : 0
+Candidate epochs (per unit)  : [50 50 50 50]
+Candidate plateau epochs      : [NaN NaN NaN NaN]
+N-step horizon : 20
+Train obj MSE  : 0.0208639
+Train series RMSE : 0.121041
+Val   RMSE      : 0.127095
+Train Fit (%)   : 85.56
+Val   Fit (%)   : 84.49
+
+MSE history (per hidden unit added): [0.0256798089851087 0.0239510493531556 0.0214698423432306 0.0208579185848362]
+Regressors.u : [1 2 3 4]
+Regressors.y : [1 2 3 4]
+Norm method  : ZScore
+Activation   : tanh
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 50
+
+Saved figure files:
+ - fitTr85p6_fitVa84p5_20260303_172247_train_fit.png
+ - fitTr85p6_fitVa84p5_20260303_172247_val_fit.png
+ - fitTr85p6_fitVa84p5_20260303_172247_loss_fit.png

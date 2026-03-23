@@ -1,7 +1,10 @@
 function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,g,config)
     % Train a candidate unit to MAXIMIZE correlation^2 with the N-step residual using mini-batches.
 
-    d = size(X0,2) + numel(W_hidden); % candidate input dim
+    % X0 shape: (Ns, nWarmupSteps, nu+ny)
+    % Extract feature dimension (last dimension)
+    nFeatures = size(X0,3);
+    d = nFeatures + numel(W_hidden); % candidate input dim
     w_h = dlarray(randn(d,1)*0.01);
 
     X0_d = dlarray(X0); 
@@ -27,7 +30,7 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
         batches = buildMiniBatchOrder(numSamples, batchSize);
         for b=1:numel(batches)
             idx = batches{b};
-            Xb = X0_d(idx,:); 
+            Xb = X0_d(idx,:,:); 
             Ub = U_d(idx,:); 
             Tb = T_d(idx,:);
             it = it + 1;

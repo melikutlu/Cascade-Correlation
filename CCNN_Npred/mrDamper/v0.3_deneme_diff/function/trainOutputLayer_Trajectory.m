@@ -50,7 +50,7 @@ function [w_o,mse,info,hFig] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g
         epochLoss = 0;
         for b=1:numel(batches)
             idx = batches{b};
-            Xb = X0(idx,:); Ub = U(idx,:); Tb = T(idx,:);
+            Xb = X0(idx,:,:); Ub = U(idx,:); Tb = T(idx,:);
             it = it+1;
             [L,grad] = dlfeval(@loss_output_traj, w_o, Xb, Ub, Tb, W_hidden, g, config);
             [w_o, avgG, avgGSq] = adamupdate(w_o, grad, avgG, avgGSq, it, config.model.eta_output);

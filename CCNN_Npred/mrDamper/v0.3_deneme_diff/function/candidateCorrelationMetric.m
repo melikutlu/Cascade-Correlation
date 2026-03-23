@@ -13,11 +13,16 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     N = size(U,2);
     v = dlarray(zeros(M,N));
 
+    % Diferansiyel derecesine göre warm-up adım sayısını al
+    diffOrder = getDiffOrder(config);
+    nWarmupSteps = diffOrder + 1;
+
     % Full y-history buffer: yhist(:,L) = y(t0-L), works for any lag combination
+    % En son warm-up adımından (w=nWarmupSteps) y history'yi initle
     maxLagY = max(ylags);
     yhist = dlarray(zeros(M, maxLagY));
     for j = 1:ny
-        yhist(:, ylags(j)) = X0(:, nu+j);
+        yhist(:, ylags(j)) = X0(:, nWarmupSteps, nu+j);
     end
 
     % track previous pre-activation per hidden and candidate for diff modes
@@ -39,7 +44,7 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
                 if idx >= 1
                     uvals(:,j) = U(:, idx);
                 else
-                    uvals(:,j) = X0(:, j);
+                    uvals(:,j) = X0(:, nWarmupSteps, j);
                 end
             end
         end

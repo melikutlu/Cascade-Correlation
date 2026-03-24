@@ -5,23 +5,25 @@ function [X0, Useq, Tseq] = createTrajectoryDataset(U, Y, config, N)
     if ~isempty(ulags(ulags>0)); maxLag = max(maxLag, max(ulags(ulags>0))); end
     if ~isempty(ylags); maxLag = max(maxLag, max(ylags)); end
     
-    % Diferansiyel derecesini al (activation tipine bağlı)
-    diffOrder = getDiffOrder(config);
-    
-    % Warm-up için gereken zaman adımları: diffOrder kadar
-    % Her diff derecesi için: diff1->2 adım, diff2->3 adım, etc.
-    nWarmupSteps = diffOrder + 1;
-    
-    % Toplam başlangıç gecikmesi = maxLag + (nWarmupSteps - 1)
-    % (nWarmupSteps - 1) çünkü warm-up için son nWarmupSteps zaman adımının regresörlerini ihtiyaç duyarız
-    totalInitDelay = maxLag + (nWarmupSteps - 1);
+    % Bu surumde diferansiyel aktivasyon sabit 1. derecedir.
+    diffOrder = 1;
+    nWarmupSteps = 2; % diff1 icin iki adimlik gecmis gerekir
+
+    % Baslangic gecikmesini maxHidden ile bagla:
+    % totalInitDelay = maxLag + (maxHidden * diffOrder)
+    if isfield(config, 'model') && isfield(config.model, 'max_hidden_units') && ~isempty(config.model.max_hidden_units)
+        nHiddenMax = max(config.model.max_hidden_units(:));
+    else
+        nHiddenMax = 0;
+    end
+    totalInitDelay = maxLag + (nHiddenMax * diffOrder);
     
     % Veri sayısı
     Ns = length(Y) - N - totalInitDelay + 1; 
     
     if Ns < 1
-        error('Not enough data. Need at least %d samples for %d-step predictions with diffOrder=%d (nWarmupSteps=%d)', ...
-              N + totalInitDelay, N, diffOrder, nWarmupSteps);
+        error('Not enough data. Need at least %d samples for %d-step predictions with diff1 and maxHidden=%d', ...
+              N + totalInitDelay, N, nHiddenMax);
     end
     
     nu = numel(ulags); 

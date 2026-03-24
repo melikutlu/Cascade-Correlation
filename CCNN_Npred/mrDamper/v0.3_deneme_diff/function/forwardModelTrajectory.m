@@ -8,9 +8,8 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
     nu = numel(ulags); 
     ny = numel(ylags);
 
-    % Diferansiyel derecesini al
-    diffOrder = getDiffOrder(config);
-    nWarmupSteps = diffOrder + 1;
+    % Bu surumde diferansiyel aktivasyon sabit 1. derecedir.
+    nWarmupSteps = 2;
     
     % X0 shape: (M, nWarmupSteps, nu+ny)
     % En son warmup adımından (w=nWarmupSteps) y geçmişini initle
@@ -20,23 +19,22 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
         yhist(:, ylags(j)) = X0(:, nWarmupSteps, nu+j);
     end
 
-    % Her hidden katman için geçmiş z değerlerini tut (diffOrder+1 adet)
+    % Her hidden katman icin bir onceki z degeri tutulur (diff1)
     nHidden = numel(W_hidden);
-    z_history = cell(nHidden, diffOrder + 1);
+    z_history = cell(nHidden, 1);
     for h = 1:nHidden
-        for d = 1:diffOrder + 1
-            z_history{h, d} = dlarray(zeros(M, 1));
-        end
+        z_history{h, 1} = dlarray(zeros(M, 1));
     end
 
     % ========== WARM-UP PHASE ==========
     % X0'daki warm-up adımlarını ağdan geçir, z_history'yi gerçek verilerle popüle et
     % Bu aşamada hiçbir prediction output'ı kaydedilmez, sadece iç state initialized
     
-    if nHidden > 0 && diffOrder > 0
+    if nHidden > 0
         for w = 1:nWarmupSteps
             % Warm-up adımı w'den regresörleri al
-            x_warmup = dlarray(X0(:, w, 1:nu+ny));
+            x_warmup = reshape(X0(:, w, 1:nu+ny), M, nu+ny);
+            x_warmup = dlarray(x_warmup);
             
             % Y geçmişini warm-up'dan güncelle (eğer w > 1 ise)
             if w > 1
@@ -51,24 +49,9 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
             for h = 1:nHidden
                 z = x * W_hidden{h};
                 
-                % Diferansiyel hesapla
-                if diffOrder == 1
-                    % z - z_prev
-                    a = applyHiddenActivation(z, z_history{h, 1}, g, config);
-                elseif diffOrder == 2
-                    % z - 2*z_prev + z_prev2
-                    z_prev = z_history{h, 1};
-                    z_prev2 = z_history{h, 2};
-                    diff_z = z - 2*z_prev + z_prev2;
-                    a = applyHiddenActivation(diff_z, [], g, config);
-                else
-                    a = applyHiddenActivation(z, [], g, config);
-                end
-                
-                % Geçmişi güncelle (kaydır)
-                for d = diffOrder:-1:1
-                    z_history{h, d+1} = z_history{h, d};
-                end
+                % diff1: z - z_prev
+                a = applyHiddenActivation(z, z_history{h, 1}, g, config);
+
                 z_history{h, 1} = z;
                 
                 x = [x, a];
@@ -107,24 +90,9 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
         for h = 1:nHidden
             z = x * W_hidden{h};
             
-            % Diferansiyel hesapla
-            if diffOrder == 1
-                % 1. derece fark: z - z_prev
-                a = applyHiddenActivation(z, z_history{h, 1}, g, config);
-            elseif diffOrder == 2
-                % 2. derece fark: z - 2*z_prev + z_prev2
-                z_prev = z_history{h, 1};
-                z_prev2 = z_history{h, 2};
-                diff_z = z - 2*z_prev + z_prev2;
-                a = applyHiddenActivation(diff_z, [], g, config);
-            else
-                a = applyHiddenActivation(z, [], g, config);
-            end
-            
-            % Geçmişi güncelle (kaydır)
-            for d = diffOrder:-1:1
-                z_history{h, d+1} = z_history{h, d};
-            end
+            % diff1: z - z_prev
+            a = applyHiddenActivation(z, z_history{h, 1}, g, config);
+
             z_history{h, 1} = z;
             
             x = [x, a];

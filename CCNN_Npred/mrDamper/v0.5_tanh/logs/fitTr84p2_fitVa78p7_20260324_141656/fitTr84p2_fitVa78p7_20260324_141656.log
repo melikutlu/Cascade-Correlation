@@ -1,0 +1,32 @@
+CCNN Parameter Log
+Created      : 2026-03-24 14:16:56
+Script       : writeParameterLog.m
+Run folder   : fitTr84p2_fitVa78p7_20260324_141656
+
+eta_out=0.0001 | eta_cand=0.0030 | output_epochs=21/100 | hidden=2/10 | regressors=6 | cand_runs=3
+Output plateau epoch : 21
+Output stopped by moving-avg : 1
+Candidate epochs (per unit)  : [100 100 21]
+Candidate plateau epochs      : [NaN NaN 21]
+N-step horizon : 20
+Train obj MSE  : 0.0253567
+Train series RMSE : 9.28262
+Val   RMSE      : 11.9559
+Train Fit (%)   : 84.16
+Val   Fit (%)   : 78.68
+
+MSE history (per hidden unit added): [0.233076231631566 0.109192454130164 0.0250584610269698]
+Regressors.u : [1 2 3]
+Regressors.y : [1 2 3]
+Norm method  : zscore
+Activation   : tanh
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+
+Saved figure files:
+ - fitTr84p2_fitVa78p7_20260324_141656_train_fit.png
+ - fitTr84p2_fitVa78p7_20260324_141656_val_fit.png
+ - fitTr84p2_fitVa78p7_20260324_141656_loss_fit.png
+ - fitTr84p2_fitVa78p7_20260324_141656_candidatecorr_fit.png
+ - fitTr84p2_fitVa78p7_20260324_141656_losshistory_fit.png

@@ -13,66 +13,19 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     N = size(U,2);
     v = dlarray(zeros(M,N));
 
-    % Diferansiyel derecesini al
-    diffOrder = getDiffOrder(config);
-    warmupSteps = diffOrder + 1;
-    nRegressor = nu + ny;
-    
-    % X0'ın yapısını kontrol et
-    if size(X0, 2) ~= warmupSteps * nRegressor
-        error('X0 column size (%d) must equal warmupSteps (%d) * nRegressor (%d)', ...
-              size(X0,2), warmupSteps, nRegressor);
-    end
-
     % Full y-history buffer: yhist(:,L) = y(t0-L), works for any lag combination
     maxLagY = max(ylags);
     yhist = dlarray(zeros(M, maxLagY));
-    
+    for j = 1:ny
+        yhist(:, ylags(j)) = X0(:, nu+j);
+    end
+
     % track previous pre-activation per hidden and candidate for diff modes
     z_prev_hidden = cell(numel(W_hidden),1);
     for h=1:numel(W_hidden)
         z_prev_hidden{h} = dlarray(zeros(M,1));
     end
     z_prev_cand = dlarray(zeros(M,1));
-
-    % ========== WARM-UP PHASE ==========
-    % X0'daki warmupSteps adet zaman adımını sırayla ağa besle
-    
-    for step = 1:warmupSteps
-        % X0'ın step'inci satırını çıkar
-        col_start = (step-1)*nRegressor + 1;
-        col_end = step*nRegressor;
-        x_warmup = dlarray(X0(:, col_start:col_end));
-        
-        uvals_warmup = x_warmup(:, 1:nu);
-        yvals_warmup = x_warmup(:, nu+1:nu+ny);
-        
-        % Y history'yi güncelle (warm-up'ta sadece input y'den)
-        for j = 1:ny
-            yhist(:, ylags(j)) = yvals_warmup(:, j);
-        end
-        
-        % Regressörleri oluştur (warm-up'ta basit: gelen veri direkt kullanılır)
-        x_t = dlarray(x_warmup);
-        
-        % Hidden katmanları hesapla
-        for h=1:numel(W_hidden)
-            z_h = x_t * W_hidden{h};
-            a_h = applyHiddenActivation(z_h, z_prev_hidden{h}, g, config);
-            z_prev_hidden{h} = z_h;
-            x_t = [x_t, a_h];
-        end
-        
-        % Candidate hidden katmanını hesapla
-        x_t = dlarray(x_t);
-        z_c = x_t * w_h;
-        a_c = applyHiddenActivation(z_c, z_prev_cand, g, config);
-        z_prev_cand = z_c;
-    end
-    
-    % ========== MAIN PREDICTION PHASE ==========
-    % Şimdi z_prev_hidden ve z_prev_cand doğru şekilde dolduruldu, 
-    % N adımlık tahmin başlayabilir
 
     for t=1:N
         % u part
@@ -86,7 +39,7 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
                 if idx >= 1
                     uvals(:,j) = U(:, idx);
                 else
-                    uvals(:,j) = 0;  % warm-up'ın ötesinde gitmemeli
+                    uvals(:,j) = X0(:, j);
                 end
             end
         end

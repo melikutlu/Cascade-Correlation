@@ -11,25 +11,34 @@ function Yhat = recursivePredictFullSeries(U, Y, W_hidden, w_o, g, config)
     w_o_local = gather(w_o);
 
     % Bu surumde diferansiyel aktivasyon sabit 1. derecedir.
-    z_history = cell(numel(W_local), 1);
+    z_prev = cell(numel(W_local),1);
     for h=1:numel(W_local)
-        z_history{h, 1} = 0;
+        z_prev{h} = 0;
     end
 
     for k=2:N
-        uvals=zeros(nu,1); for j=1:nu; L=ulags(j); if L==0; uvals(j)=U(k); else idx=k-L; if idx>=1; uvals(j)=U(idx); else uvals(j)=0; end; end; end
-        yvals=zeros(ny,1); for j=1:ny; L=ylags(j); idx=k-L; if idx>=1; yvals(j)=Yhat(idx); else yvals(j)=0; end; end
+        uvals=zeros(nu,1); 
+        for j=1:nu
+            L=ulags(j); 
+            if L==0
+                uvals(j)=U(k); 
+            else 
+                idx=k-L; 
+                if idx>=1; uvals(j)=U(idx); else uvals(j)=0; end
+            end
+        end
+        yvals=zeros(ny,1); 
+        for j=1:ny
+            L=ylags(j); 
+            idx=k-L; 
+            if idx>=1; yvals(j)=Yhat(idx); else yvals(j)=0; end
+        end
         x = [uvals(:)', yvals(:)']; 
-        
         for h=1:numel(W_local)
             z = x*W_local{h}; 
-            
-            % diff1: z - z_prev
-            a = applyHiddenActivation(z, z_history{h, 1}, g, config);
-
-            z_history{h, 1} = z;
-            
-            x=[x, a]; 
+            a = applyHiddenActivation(z, z_prev{h}, g, config); 
+            z_prev{h} = z; 
+            x=[x, a];
         end
         Yhat(k)= x * w_o_local;
     end

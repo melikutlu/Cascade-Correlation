@@ -4,7 +4,7 @@ function [X0, Useq, Tseq] = createTrajectoryDataset(U, Y, config, N)
     maxLag = 0; 
     if ~isempty(ulags(ulags>0)); maxLag = max(maxLag, max(ulags(ulags>0))); end
     if ~isempty(ylags); maxLag = max(maxLag, max(ylags)); end
-    
+
     % Bu surumde diferansiyel aktivasyon sabit 1. derecedir.
     diffOrder = 1;
     nWarmupSteps = 2; % diff1 icin iki adimlik gecmis gerekir
@@ -17,34 +17,31 @@ function [X0, Useq, Tseq] = createTrajectoryDataset(U, Y, config, N)
         nHiddenMax = 0;
     end
     totalInitDelay = maxLag + (nHiddenMax * diffOrder);
-    
-    % Veri sayısı
+
+    % Veri sayisi
     Ns = length(Y) - N - totalInitDelay + 1; 
-    
+
     if Ns < 1
         error('Not enough data. Need at least %d samples for %d-step predictions with diff1 and maxHidden=%d', ...
               N + totalInitDelay, N, nHiddenMax);
     end
-    
+
     nu = numel(ulags); 
     ny = numel(ylags);
-    
-    % X0 yapı: (Ns, nWarmupSteps, nu+ny)
-    % Her trajectory için son nWarmupSteps zaman adımının regresörlerini sakla
+
+    % X0 yapi: (Ns, nWarmupSteps, nu+ny)
     X0 = zeros(Ns, nWarmupSteps, nu+ny); 
     Useq = zeros(Ns, N); 
     Tseq = zeros(Ns, N);
-    
+
     for idx = 1:Ns
-        % Başlangıç indeksi
+        % Baslangic indeksi
         i = idx + totalInitDelay - 1;
-        
-        % Warm-up adımlarını doldur (geçmiş zaman adımlarından en yeni olana doğru)
+
+        % Warm-up adimlarini doldur (en eskiden en yeniye)
         for w = 1:nWarmupSteps
-            % w=1 en eski, w=nWarmupSteps en yeni (t=0)
-            % Gerçek zaman indeksi: i - (nWarmupSteps - w) = i - nWarmupSteps + w
             time_idx = i - nWarmupSteps + w;
-            
+
             row = zeros(1, nu+ny);
             for j = 1:nu
                 L = ulags(j);
@@ -60,8 +57,8 @@ function [X0, Useq, Tseq] = createTrajectoryDataset(U, Y, config, N)
             end
             X0(idx, w, :) = row;
         end
-        
-        % Tahmin sekansı
+
+        % Tahmin sekansi
         Useq(idx,:) = U(i+1:i+N)'; 
         Tseq(idx,:) = Y(i+1:i+N)';
     end

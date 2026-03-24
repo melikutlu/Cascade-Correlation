@@ -23,13 +23,13 @@ end
 % CONFIG
 % ----------------
 config = struct();
-config.data.source = 'mrDamper';
+config.data.source = 'dryer2';
 config.data.dryer2.sampling_time = 0.08; % s
 
 config.data.train_ratio = 0.5;
 config.data.val_ratio = 0.5;
 
-config.norm_method = 'ZScore';
+config.norm_method = 'zscore';
 
 config.prediction.n_steps = 20; % default N-step horizon (override auto when disabled)
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
@@ -42,7 +42,7 @@ config.regressors.include_bias = false;
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
 config.model.activation = 'diff';
-config.model.max_hidden_units = 10;
+config.model.max_hidden_units = 5;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
 config.model.min_mse_improvement = 1e-4; % early stop threshold
@@ -50,21 +50,21 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 % Adam typically saturates within -300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
-config.model.eta_output = 0.005;
-config.model.max_epochs_candidate = 100;
-config.model.eta_candidate = 0.03;
+config.model.eta_output = 0.0005;
+config.model.max_epochs_candidate = 300;
+config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
 % Moving-average plateau stop: after each epoch, compare current loss/metric
 % against the mean of the previous `moving_avg_window` epochs.
 % If improvement <= plateau_min_delta, training stops (plateau detected).
 config.model.moving_avg_window = 20;      % number of previous epochs to average
-config.model.use_plateau_stop = true;
+config.model.use_plateau_stop = false;
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
 config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
-config.training.candidate_pool_size = 0;    % train this many candidates, pick best scored
+config.training.candidate_pool_size = 2;    % train this many candidates, pick best scored
 config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
 
 % load raw data according to config, then normalize
@@ -74,7 +74,7 @@ config.training.use_parfor_pool = false ;     % true: train candidate pool with 
 if isfield(config.prediction, 'auto_full_horizon') && config.prediction.auto_full_horizon
     maxLag = getMaxLagFromRegressors(config.regressors);
     maxStepsTr = numel(Ytr) - maxLag;
-    maxStepsVa = numel(Yva) - maxLag - 1;
+    maxStepsVa = numel(Yva) - maxLag ;
     autoSteps = min([maxStepsTr, maxStepsVa]);
     if autoSteps < 1
         error('Not enough samples to build at least one full-horizon trajectory.');
@@ -86,20 +86,17 @@ Npred = config.prediction.n_steps;
 [X0_tr, Utr_seq, Ttr_seq] = createTrajectoryDataset(Utr, Ytr, config, Npred);
 [X0_va, Uva_seq, Tva_seq] = createTrajectoryDataset(Uva, Yva, config, Npred);
 
-% activation
-g = @(x) tanh(x);
+% activation selected by config: do not define `g` here
 
 % initialize
 W_hidden = {};
-% X0 shape: (Ns, nWarmupSteps, nFeatures)
-% Feature dimension is in the 3rd dimension
 d0 = size(X0_tr,3);
 w_o = randn(d0,1)*0.01;
 
 % Stage 1: train output weights only (N-step MSE)
-[w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config, 'b');
+[w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, config.model.activation, config, 'b');
 % Full-series recursive MSE (tutarlı olması için büyüme kararları bununla alınır)
-Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, g, config);
+Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
 current_mse = mean((Ytr(2:end) - Yhat_tmp(2:end)).^2);
 Yhat_tmp_raw = Yhat_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
 stage0_rmse = sqrt(mean((Ytr_raw(2:end) - Yhat_tmp_raw).^2));
@@ -152,7 +149,7 @@ while numel(W_hidden) < config.model.max_hidden_units
 
     if useParforPool
         parfor p = 1:poolSize
-            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
+            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, config.model.activation, config);
             candWeights{p} = tmp_w;
             candMetrics(p) = tmp_metric;
             candInfos{p} = tmp_info;
@@ -160,7 +157,7 @@ while numel(W_hidden) < config.model.max_hidden_units
         end
     else
         for p = 1:poolSize
-            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
+            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, config.model.activation, config);
             candWeights{p} = tmp_w;
             candMetrics(p) = tmp_metric;
             candInfos{p} = tmp_info;
@@ -201,9 +198,9 @@ while numel(W_hidden) < config.model.max_hidden_units
     w_o = [w_o_prev; dlarray(0)];
 
     prev_mse = current_mse;
-    [w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config, 'r');
+    [w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, config.model.activation, config, 'r');
     % Full-series recursive MSE (tutarlı olması için büyüme kararları bununla alınır)
-    Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, g, config);
+    Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
     current_mse = mean((Ytr(2:end) - Yhat_tmp(2:end)).^2);
 
     improvement = prev_mse - current_mse;
@@ -243,8 +240,8 @@ while numel(W_hidden) < config.model.max_hidden_units
 end
 
 % Full-series recursive prediction and denormalize
-Yhat_tr = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, g, config);
-Yhat_va = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, g, config);
+Yhat_tr = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
+Yhat_va = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, config.model.activation, config);
 
 Yhat_tr = Yhat_tr(2:end) * norm_stats.y_std + norm_stats.y_mu;
 Yhat_va = Yhat_va(2:end) * norm_stats.y_std + norm_stats.y_mu;

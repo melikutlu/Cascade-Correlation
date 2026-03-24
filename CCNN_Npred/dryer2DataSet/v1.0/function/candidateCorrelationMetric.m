@@ -17,7 +17,6 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     nWarmupSteps = 2;
 
     % Full y-history buffer: yhist(:,L) = y(t0-L), works for any lag combination
-    % En son warm-up adımından (w=nWarmupSteps) y history'yi initle
     maxLagY = max(ylags);
     yhist = dlarray(zeros(M, maxLagY));
     for j = 1:ny

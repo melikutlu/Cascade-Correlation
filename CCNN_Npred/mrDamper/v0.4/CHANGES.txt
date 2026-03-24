@@ -1,7 +1,1 @@
-v0.6 changes (derivative-aware hidden activations)
-- Added activation modes: tanh (default), diff (time-difference of pre-activation), diff-tanh (time-difference then tanh). Configure via config.model.activation.
-- New helper applyHiddenActivation.m applies the selected mode using previous pre-activation state.
-- forwardModelTrajectory now feeds hidden units with diff/diff-tanh outputs and tracks z_prev per hidden.
-- candidateCorrelationMetric aligns candidate scoring with the same activation logic (existing hiddens + candidate) and keeps history as dlarray.
-- recursivePredictFullSeries uses gathered weights plus diff-aware activations during evaluation.
-- Warm-start output weight extension keeps dlarray type; training still uses correlation plot accumulation from v0.5.
+mr damper sata setinde activasyon olarak diferansiyel alarak deniyoruz

@@ -1,5 +1,13 @@
 function [Utr, Ytr, Uva, Yva] = loadDataByConfig_min(config)
-    switch lower(config.data.source)
+    source = config.data.source;
+    if isstring(source)
+        source = char(source);
+    elseif iscell(source)
+        source = source{1};
+    end
+    source = lower(strtrim(source));
+
+    switch source
         case 'twotankdata'
             load twotankdata.mat; % must contain u,y
             u = u(:); y = y(:);
@@ -31,9 +39,8 @@ function [Utr, Ytr, Uva, Yva] = loadDataByConfig_min(config)
             z2f = detrend(z2);
             Utr = z1f.u; Ytr = z1f.y;
             Uva = z2f.u; Yva = z2f.y;
-        case 'mrdamper'
+        case {'mrdamper', 'mr_damper', 'mr damper'}
             load mrdamper.mat   % dataset
-            % dataset variables
             u = V(:);   % velocity
             y = F(:);   % force
             N = length(u);
@@ -43,6 +50,6 @@ function [Utr, Ytr, Uva, Yva] = loadDataByConfig_min(config)
             Uva = u(Ntr+1:end);
             Yva = y(Ntr+1:end);
         otherwise
-            error('Unknown data source: %s', config.data.source);
+            error('Unknown data source: %s', source);
     end
 end

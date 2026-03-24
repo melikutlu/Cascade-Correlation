@@ -3,9 +3,9 @@ function a = applyHiddenActivation(z, z_prev, g, config)
     if nargin < 2 || isempty(z_prev)
         z_prev = zeros(size(z), 'like', z);
     end
+
     % If g is not a function handle, resolve it from the provided value or from config
     if ~isa(g, 'function_handle')
-        % try interpret g as a name/string; otherwise fall back to config
         modeStr = "";
         if ischar(g) || isstring(g)
             modeStr = lower(string(g));
@@ -13,7 +13,7 @@ function a = applyHiddenActivation(z, z_prev, g, config)
             modeStr = lower(string(config.model.activation));
         end
         switch modeStr
-            case {"tanh","diff-tanh", "diff_tanh"}
+            case {"tanh", "diff-tanh", "diff_tanh"}
                 g = @(x) tanh(x);
             otherwise
                 g = @(x) x;

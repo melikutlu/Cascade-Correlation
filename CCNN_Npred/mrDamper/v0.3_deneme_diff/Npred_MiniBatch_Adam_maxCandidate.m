@@ -15,9 +15,7 @@ funcFolder = fullfile(scriptDir, 'function');
 if exist(funcFolder, 'dir') ~= 7
     mkdir(funcFolder);
 end
-if ~contains(path, funcFolder)
-    addpath(funcFolder);
-end
+addpath(funcFolder, '-begin');
 
 % ------------------
 % CONFIG
@@ -29,7 +27,7 @@ config.data.dryer2.sampling_time = 0.08; % s
 config.data.train_ratio = 0.5;
 config.data.val_ratio = 0.5;
 
-config.norm_method = 'ZScore';
+config.norm_method = 'zscore';
 
 config.prediction.n_steps = 20; % default N-step horizon (override auto when disabled)
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
@@ -86,8 +84,7 @@ Npred = config.prediction.n_steps;
 [X0_tr, Utr_seq, Ttr_seq] = createTrajectoryDataset(Utr, Ytr, config, Npred);
 [X0_va, Uva_seq, Tva_seq] = createTrajectoryDataset(Uva, Yva, config, Npred);
 
-% activation
-g = @(x) tanh(x);
+% activation selected by config: do not define `g` here
 
 % initialize
 W_hidden = {};
@@ -97,9 +94,9 @@ d0 = size(X0_tr,3);
 w_o = randn(d0,1)*0.01;
 
 % Stage 1: train output weights only (N-step MSE)
-[w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config, 'b');
+[w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, config.model.activation, config, 'b');
 % Full-series recursive MSE (tutarlı olması için büyüme kararları bununla alınır)
-Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, g, config);
+Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
 current_mse = mean((Ytr(2:end) - Yhat_tmp(2:end)).^2);
 Yhat_tmp_raw = Yhat_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
 stage0_rmse = sqrt(mean((Ytr_raw(2:end) - Yhat_tmp_raw).^2));
@@ -152,7 +149,7 @@ while numel(W_hidden) < config.model.max_hidden_units
 
     if useParforPool
         parfor p = 1:poolSize
-            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
+            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, config.model.activation, config);
             candWeights{p} = tmp_w;
             candMetrics(p) = tmp_metric;
             candInfos{p} = tmp_info;
@@ -160,7 +157,7 @@ while numel(W_hidden) < config.model.max_hidden_units
         end
     else
         for p = 1:poolSize
-            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, g, config);
+            [tmp_w, tmp_metric, tmp_info] = trainCandidateUnit_Corr(X0_tr, Utr_seq, Ttr_seq, W_hidden, w_o, config.model.activation, config);
             candWeights{p} = tmp_w;
             candMetrics(p) = tmp_metric;
             candInfos{p} = tmp_info;
@@ -201,9 +198,9 @@ while numel(W_hidden) < config.model.max_hidden_units
     w_o = [w_o_prev; dlarray(0)];
 
     prev_mse = current_mse;
-    [w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, g, config, 'r');
+    [w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, config.model.activation, config, 'r');
     % Full-series recursive MSE (tutarlı olması için büyüme kararları bununla alınır)
-    Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, g, config);
+    Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
     current_mse = mean((Ytr(2:end) - Yhat_tmp(2:end)).^2);
 
     improvement = prev_mse - current_mse;
@@ -243,8 +240,8 @@ while numel(W_hidden) < config.model.max_hidden_units
 end
 
 % Full-series recursive prediction and denormalize
-Yhat_tr = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, g, config);
-Yhat_va = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, g, config);
+Yhat_tr = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
+Yhat_va = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, config.model.activation, config);
 
 Yhat_tr = Yhat_tr(2:end) * norm_stats.y_std + norm_stats.y_mu;
 Yhat_va = Yhat_va(2:end) * norm_stats.y_std + norm_stats.y_mu;

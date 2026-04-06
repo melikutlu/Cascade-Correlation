@@ -1,6 +1,6 @@
 function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, config)
     % compute current model N-step output without candidate
-    Y_mod0 eel = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
+    Y_model = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
     R = T - Y_model; % residual (M x N)
 
     % compute candidate activation v (M x N) using the same recursive
@@ -13,19 +13,18 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     N = size(U,2);
     v = dlarray(zeros(M,N));
 
-    % Diferansiyel derecesine göre warm-up adım sayısını al
-    diffOrder = getDiffOrder(config);
-    nWarmupSteps = diffOrder + 1;
+    % Turev operatoru aktivasyonda hesaplanir; ilk adimda z_prev = 0 alinir.
+    nWarmupSteps = 1;
 
     % Full y-history buffer: yhist(:,L) = y(t0-L), works for any lag combination
-    % En son warm-up adımından (w=nWarmupSteps) y history'yi initle
+    % Bu surumde nWarmupSteps=1 oldugu icin t0 gecmisinden basla.
     maxLagY = max(ylags);
     yhist = dlarray(zeros(M, maxLagY));
     for j = 1:ny
         yhist(:, ylags(j)) = X0(:, nWarmupSteps, nu+j);
     end
 
-    % track previous pre-activation per hidden and candidate for diff modes
+    % hidden ve candidate icin bir onceki pre-activation durumlari
     z_prev_hidden = cell(numel(W_hidden),1);
     for h=1:numel(W_hidden)
         z_prev_hidden{h} = dlarray(zeros(M,1));

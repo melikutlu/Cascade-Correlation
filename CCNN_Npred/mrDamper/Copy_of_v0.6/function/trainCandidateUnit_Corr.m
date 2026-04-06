@@ -36,7 +36,8 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
             it = it + 1;
             [loss, ~, grad] = dlfeval(@loss_candidate_corr, w_h, Xb, Ub, Tb, W_hidden, w_o_d, g, config);
 
-          
+            
+
             % Gradient clipping to prevent explosion
             max_grad_norm = 10;
             grad_norm = sqrt(sum(grad.^2));
@@ -63,6 +64,10 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
                 plateauEpoch = ep;
                 break;
             end
+
+        %%%%%log
+            fprintf('Candidate Epoch %d | Corr=%.3e | max|w|=%.3e\n', ...
+    ep, metricVal, max(abs(extractdata(w_h))));
         end
     end
 

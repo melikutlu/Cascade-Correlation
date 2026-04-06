@@ -54,7 +54,12 @@ function [w_o,mse,info,hFig] = trainOutputLayer_Trajectory(X0,U,T,w_o,W_hidden,g
             it = it+1;
             [L,grad] = dlfeval(@loss_output_traj, w_o, Xb, Ub, Tb, W_hidden, g, config);
 
-          
+            %%%log atıyorum
+            lossVal = extractdata(L);
+                
+                fprintf('Epoch %d | Loss=%.3e | max|w_o|=%.3e\n', ...
+                    ep, lossVal, max(abs(extractdata(w_o))));
+
             % Gradient clipping to prevent explosion
             max_grad_norm = 10;
             grad_norm = sqrt(sum(grad.^2));

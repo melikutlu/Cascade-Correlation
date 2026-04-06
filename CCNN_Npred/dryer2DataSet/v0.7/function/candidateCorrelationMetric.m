@@ -82,4 +82,6 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     corr2 = (cov_vr.^2) ./ denom; % correlation squared (scalar)
 
     metric = abs(cov_vr);
+    
+
 end

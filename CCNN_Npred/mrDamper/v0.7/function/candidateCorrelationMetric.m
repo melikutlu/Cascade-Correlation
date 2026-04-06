@@ -76,15 +76,12 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     r_mean = mean(r_vec);
     v_mean = mean(v_vec);
     r_c = r_vec - r_mean;
-    v_c = v_vec - v_mean;
-    % Center the candidate response before correlation. Keeping this term
-    % smooth avoids injecting artificial sign flips into the score.
+    v_c = (v_vec - v_mean) + 0.1 * sign(v_vec - v_mean);
+    %Fahlman makalede aday ünite aktivasyonunun (v) çok hızlı doyuma ulaşıp (-1 veya +1) gradyanın sıfırlanmasından bahseder. Bunu engellemek için v_c hesaplanırken ufak bir "offset" (0.1 gibi) eklenmesini önerir.
 
     cov_vr = sum(v_c .* r_c);
     denom = (sum(v_c.^2) + eps) .* (sum(r_c.^2) + eps);
     corr2 = (cov_vr.^2) ./ denom; % correlation squared (scalar)
 
-    % Use the normalized score, not raw covariance. Raw covariance can grow
-    % without bound by scaling w_h, which makes the candidate explode numerically.
-    metric = sqrt(corr2);
+    metric = abs(cov_vr);
 end

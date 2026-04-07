@@ -86,5 +86,6 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
 
     % Use the normalized score, not raw covariance. Raw covariance can grow
     % without bound by scaling w_h, which makes the candidate explode numerically.
-    metric = sqrt(corr2);
+    metric= abs(cov_vr^2);
+    %metric = sqrt(corr2);
 end

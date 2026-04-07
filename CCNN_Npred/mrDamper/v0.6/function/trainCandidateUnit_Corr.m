@@ -19,6 +19,7 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
     best_w = w_h;
     maxEpochs = config.model.max_epochs_candidate;
     metric_hist = zeros(maxEpochs,1);
+    w_h_norm_hist = zeros(maxEpochs,1);
     plateauEpoch = NaN;
     minDelta = config.model.plateau_min_delta;
     window = max(1, round(config.model.moving_avg_window));
@@ -49,7 +50,7 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
 
         metricVal = evaluateCandidateMetric(w_h, X0_d, U_d, T_d, W_hidden, w_o_d, g, config);
         metric_hist(ep) = metricVal;
-        
+        w_h_norm_hist(ep) = sqrt(sum(extractdata(w_h).^2));
         
         if metricVal > best_metric
             best_metric = metricVal;
@@ -69,5 +70,6 @@ function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,
     w_h = best_w;
     epochs_run = ep;
     metric_hist = metric_hist(1:epochs_run);
-    info = struct('epochs_run', epochs_run, 'plateau_epoch', plateauEpoch, 'metric_history', metric_hist);
+    w_h_norm_hist = w_h_norm_hist(1:epochs_run);
+    info = struct('epochs_run', epochs_run, 'plateau_epoch', plateauEpoch, 'metric_history', metric_hist, 'w_h_norm_history', w_h_norm_hist);
 end

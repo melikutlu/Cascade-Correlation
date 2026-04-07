@@ -38,7 +38,7 @@ config.regressors.include_bias = false;
 
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
-config.model.activation = 'tanh';
+config.model.activation = 'diff-tanh';
 config.model.max_hidden_units = 10;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed

@@ -47,9 +47,9 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 
 % Adam typically saturates within -300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 100;
+config.model.max_epochs_output = 50;
 config.model.eta_output = 0.005;
-config.model.max_epochs_candidate = 100;
+config.model.max_epochs_candidate = 50;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
@@ -173,8 +173,8 @@ while numel(W_hidden) < config.model.max_hidden_units
     w_h = bestCandW;
     cand_metric = bestCandMetric;
     candInfo = bestCandInfo;
-    candidateEpochHistory(end+1) = candInfo.epochs_run; %#ok<AGROW>
-    candidatePlateauHistory(end+1) = candInfo.plateau_epoch; %#ok<AGROW>
+    candidateEpochHistory(end+1) = candInfo.epochs_run; 
+    candidatePlateauHistory(end+1) = candInfo.plateau_epoch; 
     fprintf('Selected candidate for #%d | score: %.6g\n', h, cand_metric);
     if ~isnan(candInfo.plateau_epoch)
         fprintf('Selected candidate plateau at epoch %d (ran %d/%d epochs).\n', ...

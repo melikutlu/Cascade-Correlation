@@ -41,7 +41,7 @@ config.regressors.include_bias = false;
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
 config.model.activation = 'diff';
 config.model.max_hidden_units = 5;
-config.model.force_hidden_growth = true; % true: always add up to max_hidden_units
+config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
 config.model.min_mse_improvement = 1e-4; % early stop threshold
 
@@ -49,7 +49,7 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 % Adam typically saturates within -300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
 config.model.eta_output = 0.005;
-config.model.max_epochs_candidate = 100;
+config.model.max_epochs_candidate = 300;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
@@ -62,7 +62,7 @@ config.model.use_plateau_stop = true;
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
 config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
-config.training.candidate_pool_size = 1;    % train this many candidates, pick best scored
+config.training.candidate_pool_size = 0;    % train this many candidates, pick best scored
 config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
 
 % load raw data according to config, then normalize
@@ -134,6 +134,7 @@ while numel(W_hidden) < config.model.max_hidden_units
     end
 
     h = numel(W_hidden) + 1;
+  
     poolSize = max(1, round(config.training.candidate_pool_size));
     useParforPool = config.training.use_parfor_pool && license('test','Distrib_Computing_Toolbox') && ~isempty(ver('parallel'));
     fprintf('\nTraining candidate pool for hidden #%d (pool=%d, parfor=%d)\n', h, poolSize, double(useParforPool));

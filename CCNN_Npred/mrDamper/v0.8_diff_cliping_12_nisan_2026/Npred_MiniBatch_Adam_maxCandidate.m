@@ -40,16 +40,16 @@ config.regressors.include_bias = false;
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
 config.model.activation = 'diff';
-config.model.max_hidden_units = 5;
+config.model.max_hidden_units = 4;
 config.model.force_hidden_growth = true; % true: always add up to max_hidden_units
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
 config.model.min_mse_improvement = 1e-4; % early stop threshold
 
 
 % Adam typically saturates within -300 epochs; plateau guard stops early.
-config.model.max_epochs_output = 100;
+config.model.max_epochs_output = 50;
 config.model.eta_output = 0.005;
-config.model.max_epochs_candidate = 100;
+config.model.max_epochs_candidate = 50;
 config.model.eta_candidate = 0.003;
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
@@ -97,6 +97,11 @@ w_o = randn(d0,1)*0.01;
 [w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, config.model.activation, config, 'b');
 % Full-series recursive MSE (tutarlı olması için büyüme kararları bununla alınır)
 Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
+% NaN/Inf kontrol
+if any(isnan(Yhat_tmp(:))) || any(isinf(Yhat_tmp(:)))
+    fprintf('WARNING: Yhat_tmp contains NaN or Inf values! Activation explosion detected.\n');
+    fprintf('  NaN count: %d, Inf count: %d\n', sum(isnan(Yhat_tmp(:))), sum(isinf(Yhat_tmp(:))));
+end
 current_mse = mean((Ytr(2:end) - Yhat_tmp(2:end)).^2);
 Yhat_tmp_raw = Yhat_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
 stage0_rmse = sqrt(mean((Ytr_raw(2:end) - Yhat_tmp_raw).^2));
@@ -173,8 +178,8 @@ while numel(W_hidden) < config.model.max_hidden_units
     w_h = bestCandW;
     cand_metric = bestCandMetric;
     candInfo = bestCandInfo;
-    candidateEpochHistory(end+1) = candInfo.epochs_run; %#ok<AGROW>
-    candidatePlateauHistory(end+1) = candInfo.plateau_epoch; %#ok<AGROW>
+    candidateEpochHistory(end+1) = candInfo.epochs_run; 
+    candidatePlateauHistory(end+1) = candInfo.plateau_epoch; 
     fprintf('Selected candidate for #%d | score: %.6g\n', h, cand_metric);
     if ~isnan(candInfo.plateau_epoch)
         fprintf('Selected candidate plateau at epoch %d (ran %d/%d epochs).\n', ...
@@ -201,6 +206,14 @@ while numel(W_hidden) < config.model.max_hidden_units
     [w_o, ~, outputTrainInfo, lossHistoryFig] = trainOutputLayer_Trajectory(X0_tr, Utr_seq, Ttr_seq, w_o, W_hidden, config.model.activation, config, 'r');
     % Full-series recursive MSE (tutarlı olması için büyüme kararları bununla alınır)
     Yhat_tmp = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
+    % NaN/Inf kontrol - 3. layer'da sıklıkla patlıyor
+    if any(isnan(Yhat_tmp(:))) || any(isinf(Yhat_tmp(:)))
+        fprintf('ERROR at Hidden #%d: Yhat_tmp contains NaN or Inf! Stopping.\n', numel(W_hidden));
+        fprintf('  NaN count: %d, Inf count: %d\n', sum(isnan(Yhat_tmp(:))), sum(isinf(Yhat_tmp(:))));
+        W_hidden(end) = [];
+        w_o = w_o_prev;
+        break;
+    end
     current_mse = mean((Ytr(2:end) - Yhat_tmp(2:end)).^2);
 
     improvement = prev_mse - current_mse;
@@ -242,6 +255,11 @@ end
 % Full-series recursive prediction and denormalize
 Yhat_tr = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
 Yhat_va = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, config.model.activation, config);
+
+% Son kontrol
+if any(isnan(Yhat_tr(:))) || any(isinf(Yhat_tr(:)))
+    fprintf('WARNING: Yhat_tr contains NaN/Inf (%.0f NaN, %.0f Inf)\n', sum(isnan(Yhat_tr(:))), sum(isinf(Yhat_tr(:))));
+end
 
 Yhat_tr = Yhat_tr(2:end) * norm_stats.y_std + norm_stats.y_mu;
 Yhat_va = Yhat_va(2:end) * norm_stats.y_std + norm_stats.y_mu;

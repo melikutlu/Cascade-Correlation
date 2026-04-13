@@ -53,15 +53,34 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
         end
 
         x = dlarray([uvals, yvals]);
+
+        
         
         for h = 1:nHidden
-            z = x * W_hidden{h};
-            
-            a = applyHiddenActivation(z, z_history{h, 1}, g, config);
+    z = x * W_hidden{h};
+    
+    a = applyHiddenActivation(z, z_history{h,1}, g, config);
 
-            z_history{h, 1} = z;
-            
-            x = [x, a];
+    
+    if t <= 20  % sadece ilk 5 adımı logla
+
+% Başında
+all_diffs = [];
+
+% Döngü içinde fprintf'in altına
+all_diffs(end+1) = gather(z(1) - z_history{h,1}(1));
+
+% Sonunda
+fprintf('MAX |diff|: %.4g\n', max(abs(all_diffs)));
+fprintf('MIN |diff|: %.4g\n', min(abs(all_diffs)));
+fprintf('MEAN |diff|: %.4g\n', mean(abs(all_diffs)));
+
+        fprintf('t=%d, h=%d, z=%.4g, z_prev=%.4g, diff=%.4g\n', ...
+            t, h, gather(z(1)), gather(z_history{h,1}(1)), ...
+            gather(z(1) - z_history{h,1}(1)));
+    end
+    z_history{h,1} = z;
+    x = [x, a];
         end
         
         y = x * w_o;

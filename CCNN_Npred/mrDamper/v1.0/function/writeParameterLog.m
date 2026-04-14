@@ -85,6 +85,15 @@ function logFilePath = writeParameterLog(config, logInfo)
     fprintf(fid, 'Activation   : %s\n', logInfo.activation);
     fprintf(fid, 'Diff clip lower : %.6g\n', config.model.diff_clip_lower);
     fprintf(fid, 'Diff clip upper : %.6g\n', config.model.diff_clip_upper);
+    if isfield(config.model, 'sim_loss_eval_interval')
+        fprintf(fid, 'Sim loss eval interval : %d\n', config.model.sim_loss_eval_interval);
+    end
+    if isfield(config.model, 'sim_loss_min_blocks')
+        fprintf(fid, 'Sim loss min blocks : %d\n', config.model.sim_loss_min_blocks);
+    end
+    if isfield(config.model, 'output_max_epochs')
+        fprintf(fid, 'Output max epochs : %d\n', config.model.output_max_epochs);
+    end
     fprintf(fid, 'Target MSE   : %.6g\n', config.model.target_mse);
     fprintf(fid, 'Plateau min delta  : %.3g\n', logInfo.plateau_min_delta);
     fprintf(fid, 'Moving avg window  : %d\n', logInfo.moving_avg_window);

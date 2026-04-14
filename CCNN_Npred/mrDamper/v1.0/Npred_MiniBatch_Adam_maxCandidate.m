@@ -21,50 +21,52 @@ addpath(funcFolder, '-begin');
 % CONFIG
 % ----------------
 config = struct();
-config.data.source = 'mrDamper';
-config.data.dryer2.sampling_time = 0.08; % s
+config.data.source = 'mrDamper'; % kullanılacak veri seti kaynağı
+config.data.dryer2.sampling_time = 0.08; % örnekleme süresi (s)
 
-config.data.train_ratio = 0.5;
-config.data.val_ratio = 0.5;
+config.data.train_ratio = 0.5; % eğitim verisi oranı
+config.data.val_ratio = 0.5; % doğrulama verisi oranı
 
-config.norm_method = 'zscore';
+config.norm_method = 'zscore'; % veriyi z-score ile normalize et
 
-config.prediction.n_steps = 20; % default N-step horizon (override auto when disabled)
-config.prediction.auto_full_horizon = false; % set true to span full usable data length
+config.prediction.n_steps = 20; % tahmin ufku; otomatik mod kapalıysa bu değeri kullan
+config.prediction.auto_full_horizon = false; % true ise kullanılabilir tüm veri uzunluğunu hedefle
 
 % regressors (user can change)
-config.regressors.u = [1]; % example: u(t), u(t-1) (u(t) kaldır, dryer2'de dead time var)
-config.regressors.y = [1]; % example: y(t-1), y(t-2)
-config.regressors.include_bias = false;
+config.regressors.u = [1]; % giriş gecikmeleri; u(t), u(t-1) gibi terimleri seçer
+config.regressors.y = [1]; % çıkış gecikmeleri; y(t-1), y(t-2) gibi terimleri seçer
+config.regressors.include_bias = false; % sabit bias regressor'ü ekle veya çıkar
 
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
-config.model.activation = 'diff-tanh';
-config.model.diff_clip_lower = -10;
-config.model.diff_clip_upper = 10;
-config.model.hidden_bootstrap_count = 5;
-config.model.hidden_acceptance_window = 5;
-config.model.max_hidden_units = 15;
-config.model.force_hidden_growth = true; % true: always add up to max_hidden_units
-config.model.target_mse = 5e-4;  % true MSE — adjust if needed
+config.model.activation = 'diff-tanh'; % gizli katman aktivasyon tipi
+config.model.diff_clip_lower = -10; % diff aktivasyonunda alt kırpma sınırı
+config.model.diff_clip_upper = 10; % diff aktivasyonunda üst kırpma sınırı
+config.model.hidden_bootstrap_count = 5; % ilk kaç gizli birimi zorunlu kabul edeceğini belirler
+config.model.hidden_acceptance_window = 5; % kabul kararı için kaç önceki gizli birimin ortalamasını kullanır
+config.model.max_hidden_units = 15; % en fazla kaç gizli birim ekleneceği
+config.model.force_hidden_growth = true; % true ise hedefe bakmadan gizli birim eklemeye devam eder
+config.model.target_mse = 5e-4;  % durdurma / hedefleme için istenen MSE seviyesi
 
 
-% Output layer is trained in 20-epoch blocks, then evaluated with full recursive simulation loss.
-config.model.max_epochs_output = 20;
-config.model.max_output_blocks = 50; % hard cap for block-based output training
-config.model.eta_output = 0.005;
-config.model.max_epochs_candidate = 50;
-config.model.eta_candidate = 0.003;
-config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
+% Output-layer recursive simulation loss is evaluated every N epochs.
+config.model.sim_loss_eval_interval = 20; % recursive sim-loss kaç epochta bir ölçülecek
+config.model.sim_loss_min_blocks = 3; % plato kararından önce en az kaç blok çalışacak
+config.model.output_max_epochs = 1000; % output katmanı için toplam epoch bütçesi
+config.model.max_epochs_output = config.model.sim_loss_eval_interval; % tek blokta çalıştırılacak varsayılan epoch sayısı
+config.model.eta_output = 0.005; % output katmanı öğrenme oranı
+config.model.max_epochs_candidate = 50; % aday gizli biriminin en çok kaç epoch eğitileceği
+config.model.eta_candidate = 0.003; % aday gizli biriminin öğrenme oranı
+config.model.plateau_min_delta = 0;   % önceki pencere ortalamasına göre en küçük iyileşme eşiği
 
-config.model.moving_avg_window = 20;      % number of previous epochs to average
-config.model.use_plateau_stop = true; % still used by candidate training; output layer uses simulation-block plateau logic
+config.model.moving_avg_window = 20;      % plato kontrolünde kaç önceki epochun ortalamasının kullanılacağı
+config.model.use_plateau_stop = true; % aday eğitiminde plato durdurma açık, output katmanında blok tabanlı mantık kullanılır
 
 config.training = struct();
-config.training.batch_size_output = 32;     % mini-batch size for output layer updates
-config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
-config.training.candidate_pool_size = 1;    % train this many candidates, pick best scored
-config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
+config.training.batch_size_output = 32;     % output katmanı güncellemesinde mini-batch boyutu
+config.training.batch_size_candidate = 32;  % aday birim aramasında mini-batch boyutu
+config.training.candidate_pool_size = 1;    % aynı anda eğitilecek aday sayısı
+config.training.use_parfor_pool = false ;     % true ise aday havuzunu paralel eğitir (varsa)
 
 % load raw data according to config, then normalize
 [Utr_raw, Ytr_raw, Uva_raw, Yva_raw] = loadDataByConfig_min(config);
@@ -78,7 +80,7 @@ if isfield(config.prediction, 'auto_full_horizon') && config.prediction.auto_ful
     if autoSteps < 1
         error('Not enough samples to build at least one full-horizon trajectory.');
     end
-    config.prediction.n_steps = autoSteps;
+    config.prediction.n_steps = autoSteps; % otomatik modda tahmin ufkunu veri uzunluğuna göre ayarla
 end
 
 Npred = config.prediction.n_steps;
@@ -289,7 +291,7 @@ while numel(W_hidden) < config.model.max_hidden_units
         fprintf('Output layer re-train used %d epochs across %d blocks (no simulation plateau).\n', ...
             outputTrainInfo.epochs_run, outputTrainInfo.block_count);
     end
-    config.model.eta_output = config.model.eta_output ;
+    config.model.eta_output = config.model.eta_output ; % sonraki hidden birim için mevcut output öğrenme oranını koru
     fprintf('Output learning rate reduced to %.2e for next hidden unit.\n', config.model.eta_output);
     [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 end
@@ -317,7 +319,9 @@ logInfo = struct();
 logInfo.eta_output = config.model.eta_output;
 logInfo.eta_candidate = config.model.eta_candidate;
 logInfo.max_epochs_output = config.model.max_epochs_output;
-logInfo.max_output_blocks = config.model.max_output_blocks;
+logInfo.sim_loss_eval_interval = config.model.sim_loss_eval_interval;
+logInfo.sim_loss_min_blocks = config.model.sim_loss_min_blocks;
+logInfo.output_max_epochs = config.model.output_max_epochs;
 logInfo.output_epochs_used = outputTrainInfo.epochs_run;
 logInfo.output_plateau_epoch = outputTrainInfo.plateau_epoch;
 logInfo.output_block_count = outputTrainInfo.block_count;

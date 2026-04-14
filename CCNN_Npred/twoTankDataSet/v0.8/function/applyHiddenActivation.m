@@ -33,11 +33,20 @@ function a = applyHiddenActivation(z, z_prev, g, config)
 
     switch mode
         case {"diff", "diff-only"}
-            a = dzdk;
+            % Tamamen dlarray'de işlem - GPU destekli
+            % z_prev'dan epsilon hesapla (dlarray operasyonu)
+            epsilon = max(1e-2, 0.01 * max(abs(z_prev)));
+            
+            % Element-wise bölme (dlarray)
+            a = dzdk ./ (abs(z_prev) + epsilon);
+            
+            % Gradient clipping (dlarray)
+            a = max(min(a, 10), -10);
         case {"diff-sigmoid", "diff_sigmoid"}
             a = g(dzdk);
         case {"diff-tanh", "diff_tanh"}
             a = g(dzdk);
+            a = max(min(a, 10), -10);
         otherwise
             a = g(z);
     end

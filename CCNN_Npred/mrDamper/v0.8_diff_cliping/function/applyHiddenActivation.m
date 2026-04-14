@@ -41,7 +41,17 @@ function a = applyHiddenActivation(z, z_prev, g, config)
             % Gradient clipping (dlarray)
             a = max(min(a, 10), -10);
         case {"diff-tanh", "diff_tanh"}
-            a = g(dzdk);
+
+            epsilon = max(1e-2, 0.01 * max(abs(z_prev)));
+            
+            % Element-wise bölme (dlarray)
+            k = dzdk ./ (abs(z_prev) + epsilon);
+            
+            % Gradient clipping (dlarray)
+            k = max(min(k, 10), -10);
+
+
+            a = g(k);
         otherwise
             a = g(z);
     end

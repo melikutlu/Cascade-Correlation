@@ -1,0 +1,36 @@
+CCNN Parameter Log
+Created      : 2026-04-15 00:37:01
+Script       : writeParameterLog.m
+Run folder   : fitTr69p8_fitVa68p5_20260415_003701
+
+eta_out=0.0050 | eta_cand=0.0030 | output_epochs=60/20 | hidden=11/15 | regressors=2 | cand_runs=12
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [24 31 23 26 21 25 22 26 28 23 21 37]
+Candidate plateau epochs      : [24 31 23 26 21 25 22 26 28 23 21 37]
+N-step horizon : 20
+Train obj MSE  : 0.105389
+Train series RMSE : 17.6908
+Val   RMSE      : 17.6889
+Train Fit (%)   : 69.82
+Val   Fit (%)   : 68.45
+
+MSE history (per hidden unit added): [0.232993896206301 0.233289613871468 0.221476049087623 0.224063814929822 0.208940479093926 0.198410926706302 0.154792707361649 0.123887528392035 0.127807943023877 0.108394500170035 0.102579808285417 0.091013710734947]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff
+Diff clip lower : -10
+Diff clip upper : 10
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+
+Saved figure files:
+ - fitTr69p8_fitVa68p5_20260415_003701_train_fit.png
+ - fitTr69p8_fitVa68p5_20260415_003701_val_fit.png
+ - fitTr69p8_fitVa68p5_20260415_003701_loss_fit.png
+ - fitTr69p8_fitVa68p5_20260415_003701_candidatecorr_fit.png
+ - fitTr69p8_fitVa68p5_20260415_003701_losshistory_fit.png

@@ -21,7 +21,7 @@ addpath(funcFolder, '-begin');
 % CONFIG
 % ----------------
 config = struct();
-config.data.source = 'twotankdata'; % veri seti adı: twotankdata | dryer2 | mrDamper
+config.data.source = 'dryer2'; % veri seti adı: twotankdata | dryer2 | mrDamper
 
 config.data.train_ratio = 0.5; % eğitim verisi oranı
 config.data.val_ratio = 0.5; % doğrulama verisi oranı
@@ -37,25 +37,25 @@ config.regressors.y = [1]; % çıkış gecikmeleri; y(t-1), y(t-2) gibi terimler
 config.regressors.include_bias = false; % sabit bias regressor'ü ekle veya çıkar
 
 % model / training
-% activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
+% activation options: 'tanh' , 'diff' , 'diff-tanh'
 config.model.activation = 'diff'; % gizli katman aktivasyon tipi
-config.model.diff_clip_lower = -10; % diff aktivasyonunda alt kırpma sınırı
-config.model.diff_clip_upper = 10; % diff aktivasyonunda üst kırpma sınırı
+config.model.diff_clip_lower = -20; % diff aktivasyonunda alt kırpma sınırı
+config.model.diff_clip_upper = 20; % diff aktivasyonunda üst kırpma sınırı
 config.model.hidden_bootstrap_count = 4; % ilk kaç gizli birimi zorunlu eklenir 
 config.model.hidden_acceptance_window = 3; % kabul kararı için kaç önceki gizli birimin ortalamasını kullanır
-config.model.max_hidden_units = 15; % en fazla kaç gizli birim ekleneceği
-config.model.force_hidden_growth = false; % true ise hedefe bakmadan gizli birim eklemeye devam eder
+config.model.max_hidden_units = 10; % en fazla kaç gizli birim ekleneceği
+config.model.force_hidden_growth = true; % true ise hedefe bakmadan gizli birim eklemeye devam eder
 config.model.target_mse = 5e-4;  % durdurma / hedefleme için istenen MSE seviyesi
 
 
 % Output-layer recursive simulation loss is evaluated every N epochs.
-config.model.sim_loss_eval_interval = 10; % recursive sim-loss kaç epochta bir ölçülecek
+config.model.sim_loss_eval_interval = 20; % recursive sim-loss kaç epochta bir ölçülecek
 config.model.sim_loss_min_blocks = 3; % plato kararından önce en az kaç blok çalışacak
 config.model.output_max_epochs = 1000; % output katmanı için toplam epoch bütçesi
 config.model.max_epochs_output = config.model.sim_loss_eval_interval; % tek blokta çalıştırılacak varsayılan epoch sayısı
-config.model.eta_output = 0.005; % output katmanı öğrenme oranı
-config.model.max_epochs_candidate = 300; % aday gizli biriminin en çok kaç epoch eğitileceği
-config.model.eta_candidate = 0.003; % aday gizli biriminin öğrenme oranı
+config.model.eta_output = 0.0005; % output katmanı öğrenme oranı
+config.model.max_epochs_candidate = 500; % aday gizli biriminin en çok kaç epoch eğitileceği
+config.model.eta_candidate = 0.0005; % aday gizli biriminin öğrenme oranı
 config.model.plateau_min_delta = 0;   % önceki pencere ortalamasına göre en küçük iyileşme eşiği
 
 config.model.moving_avg_window = 20;      % plato kontrolünde kaç önceki epochun ortalamasının kullanılacağı

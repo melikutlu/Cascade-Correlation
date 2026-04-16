@@ -15,9 +15,9 @@ function [plotHandle, figHandle] = updateCorrelationFigure(plotHandle, figHandle
         grid on;
         xlabel('Candidate epochs (cumulative)');
         ylabel('Correlation metric');
-        title('Residual correlation during candidate training');
     else
         set(plotHandle, 'XData', xVals, 'YData', corrHist);
     end
+    title('Residual correlation during candidate training');
     drawnow;
 end

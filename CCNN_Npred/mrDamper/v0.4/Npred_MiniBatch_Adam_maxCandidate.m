@@ -15,22 +15,21 @@ funcFolder = fullfile(scriptDir, 'function');
 if exist(funcFolder, 'dir') ~= 7
     mkdir(funcFolder);
 end
-if contains(path, funcFolder)
-    rmpath(funcFolder);
+if ~contains(path, funcFolder)
+    addpath(funcFolder);
 end
-addpath(funcFolder, '-begin');
 
 % ------------------
 % CONFIG
 % ----------------
 config = struct();
-config.data.source = 'mrdamper';
-config.data.mrdamper.sampling_time = 0.005; % s
+config.data.source = 'mrDamper';
+config.data.dryer2.sampling_time = 0.08; % s
 
-config.data.train_ratio = 0.8;
-config.data.val_ratio = 0.2;
+config.data.train_ratio = 0.5;
+config.data.val_ratio = 0.5;
 
-config.norm_method = 'zscore';
+config.norm_method = 'ZScore';
 
 config.prediction.n_steps = 20; % default N-step horizon (override auto when disabled)
 config.prediction.auto_full_horizon = false; % set true to span full usable data length
@@ -60,12 +59,12 @@ config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mea
 % against the mean of the previous `moving_avg_window` epochs.
 % If improvement <= plateau_min_delta, training stops (plateau detected).
 config.model.moving_avg_window = 20;      % number of previous epochs to average
-config.model.use_plateau_stop = false;
+config.model.use_plateau_stop = true;
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
 config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
-config.training.candidate_pool_size = 2;    % train this many candidates, pick best scored
+config.training.candidate_pool_size = 0;    % train this many candidates, pick best scored
 config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
 
 % load raw data according to config, then normalize
@@ -75,7 +74,7 @@ config.training.use_parfor_pool = false ;     % true: train candidate pool with 
 if isfield(config.prediction, 'auto_full_horizon') && config.prediction.auto_full_horizon
     maxLag = getMaxLagFromRegressors(config.regressors);
     maxStepsTr = numel(Ytr) - maxLag;
-    maxStepsVa = numel(Yva) - maxLag ;
+    maxStepsVa = numel(Yva) - maxLag - 1;
     autoSteps = min([maxStepsTr, maxStepsVa]);
     if autoSteps < 1
         error('Not enough samples to build at least one full-horizon trajectory.');
@@ -87,11 +86,16 @@ Npred = config.prediction.n_steps;
 [X0_tr, Utr_seq, Ttr_seq] = createTrajectoryDataset(Utr, Ytr, config, Npred);
 [X0_va, Uva_seq, Tva_seq] = createTrajectoryDataset(Uva, Yva, config, Npred);
 
-% activation selected by config: do not define `g` here
+% activation
+g = @(x) tanh(x);
 
 % initialize
 W_hidden = {};
-d0 = size(X0_tr,2);
+% X0 is now a matrix with columns = warmupSteps * (nu+ny)
+% But w_o should start with size = nu+ny (initial input layer size)
+nu = numel(config.regressors.u);
+ny = numel(config.regressors.y);
+d0 = nu + ny;  % Size of initial input layer (before hidden units)
 w_o = randn(d0,1)*0.01;
 
 % Stage 1: train output weights only (N-step MSE)

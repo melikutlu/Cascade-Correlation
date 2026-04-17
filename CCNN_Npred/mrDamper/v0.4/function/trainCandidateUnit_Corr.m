@@ -1,7 +1,11 @@
 function [w_h, best_metric, info] = trainCandidateUnit_Corr(X0,U,T,W_hidden,w_o,g,config)
     % Train a candidate unit to MAXIMIZE correlation^2 with the N-step residual using mini-batches.
 
-    d = size(X0,2) + numel(W_hidden); % candidate input dim
+    % X0 is now (Ns, warmupSteps*(nu+ny)) after warm-up structure change
+    % But candidate input dimension = (nu+ny) regressors + nHidden existing units
+    nu = numel(config.regressors.u);
+    ny = numel(config.regressors.y);
+    d = (nu + ny) + numel(W_hidden); % candidate input dim (input regressors + existing hidden units)
     w_h = dlarray(randn(d,1)*0.01);
 
     X0_d = dlarray(X0); 

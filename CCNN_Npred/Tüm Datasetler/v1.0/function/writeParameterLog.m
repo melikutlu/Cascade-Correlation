@@ -113,6 +113,8 @@ function logFilePath = writeParameterLog(config, logInfo)
     fprintf(fid, 'Target MSE   : %.6g\n', config.model.target_mse);
     fprintf(fid, 'Plateau min delta  : %.3g\n', logInfo.plateau_min_delta);
     fprintf(fid, 'Moving avg window  : %d\n', logInfo.moving_avg_window);
+    fprintf(fid, 'Hidden bootstrap count : %d\n', logInfo.hidden_bootstrap_count);
+    fprintf(fid, 'Hidden acceptance window : %d\n', logInfo.hidden_acceptance_window);
 
     fclose(fid);
 end

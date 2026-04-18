@@ -37,30 +37,29 @@ config.regressors.y = [1]; % çıkış gecikmeleri; y(t-1), y(t-2) gibi terimler
 config.regressors.include_bias = false; % sabit bias regressor'ü ekle veya çıkar
 
 % model / training
-% activation options: 'tanh' , 'diff' , 'diff-tanh'
-config.model.activation = 'diff-tanh'; % gizli katman aktivasyon tipi
-config.model.diff_clip_lower = -50; % diff aktivasyonunda alt kırpma sınırı
-config.model.diff_clip_upper = 50; % diff aktivasyonunda üst kırpma sınırı
+% activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
+config.model.activation = 'diff'; % gizli katman aktivasyon tipi
+config.model.diff_clip_lower = -20; % diff aktivasyonunda alt kırpma sınırı
+config.model.diff_clip_upper = 20; % diff aktivasyonunda üst kırpma sınırı
 config.model.hidden_bootstrap_count = 4; % ilk kaç gizli birimi zorunlu eklenir 
 config.model.hidden_acceptance_window = 3; % kabul kararı için kaç önceki gizli birimin ortalamasını kullanır
-config.model.max_hidden_units = 1; % en fazla kaç gizli birim ekleneceği
+config.model.max_hidden_units = 15; % en fazla kaç gizli birim ekleneceği
 config.model.force_hidden_growth = false; % true ise hedefe bakmadan gizli birim eklemeye devam eder
 config.model.target_mse = 5e-4;  % durdurma / hedefleme için istenen MSE seviyesi
 
 
 % Output-layer recursive simulation loss is evaluated every N epochs.
-config.model.sim_loss_eval_interval = 20; % recursive sim-loss kaç epochta bir ölçülecek
+config.model.sim_loss_eval_interval = 10; % recursive sim-loss kaç epochta bir ölçülecek
 config.model.sim_loss_min_blocks = 3; % plato kararından önce en az kaç blok çalışacak
-config.model.output_max_epochs = 3; % output katmanı için toplam epoch bütçesi
+config.model.output_max_epochs = 1000; % output katmanı için toplam epoch bütçesi
 config.model.max_epochs_output = config.model.sim_loss_eval_interval; % tek blokta çalıştırılacak varsayılan epoch sayısı
-config.model.force_output_full_epochs = true; % true ise output katmanı bloklara bölünmeden tek parçada max epoch kadar koşar
-config.model.eta_output = 0.001; % output katmanı öğrenme oranı
-config.model.max_epochs_candidate = 3; % aday gizli biriminin en çok kaç epoch eğitileceği
-config.model.eta_candidate = 0.001; % aday gizli biriminin öğrenme oranı
+config.model.eta_output = 0.005; % output katmanı öğrenme oranı
+config.model.max_epochs_candidate = 300; % aday gizli biriminin en çok kaç epoch eğitileceği
+config.model.eta_candidate = 0.003; % aday gizli biriminin öğrenme oranı
 config.model.plateau_min_delta = 0;   % önceki pencere ortalamasına göre en küçük iyileşme eşiği
 
 config.model.moving_avg_window = 20;      % plato kontrolünde kaç önceki epochun ortalamasının kullanılacağı
-config.model.use_plateau_stop = false; % aday eğitiminde plato durdurma açık, output katmanında blok tabanlı mantık kullanılır
+config.model.use_plateau_stop = true; % aday eğitiminde plato durdurma açık, output katmanında blok tabanlı mantık kullanılır
 
 config.training = struct();
 config.training.batch_size_output = 32;     % output katmanı güncellemesinde mini-batch boyutu
@@ -135,14 +134,11 @@ if isfield(outputTrainInfo,'sim_loss_history') && ~isempty(outputTrainInfo.sim_l
 end
 
 mse_hist = current_mse;
-preRevertMseHist = [];
 
 candidateEpochHistory = [];
 candidatePlateauHistory = [];
 lossPlotHandle = [];
 lossFigHandle = [];
-preRevertLossPlotHandle = [];
-preRevertLossFigHandle = [];
 corrPlotHandle = [];
 corrFigHandle = [];
 candidateCorrHistory = [];
@@ -270,7 +266,6 @@ while numel(W_hidden) < config.model.max_hidden_units
         fprintf('Bootstrap check: mean of first %d accepted hidden MSEs = %.6g | baseline = %.6g\n', ...
             hiddenBootstrapCount, bootstrapAvg, baselineMse);
         if bootstrapAvg >= baselineMse
-            preRevertMseHist = mse_hist;
             W_hidden = baselineW_hidden;
             w_o = baselineW_o;
             acceptedHiddenMseHistory = zeros(0, 1);
@@ -302,15 +297,6 @@ while numel(W_hidden) < config.model.max_hidden_units
     fprintf('Output learning rate reduced to %.2e for next hidden unit.\n', config.model.eta_output);
     [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist);
 end
-
-if isempty(preRevertMseHist)
-    preRevertMseHist = mse_hist;
-end
-
-[lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist, ...
-    'Train MSE vs Hidden Units - Final Model', 'Train MSE vs Hidden Units (Final Model)');
-[preRevertLossPlotHandle, preRevertLossFigHandle] = updateLossFigure(preRevertLossPlotHandle, preRevertLossFigHandle, preRevertMseHist, ...
-    'Train MSE vs Hidden Units - Before Revert', 'Train MSE vs Hidden Units (Before Revert)');
 
 % Full-series recursive prediction and denormalize
 Yhat_tr = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
@@ -391,7 +377,7 @@ title(sprintf('VAL | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_va)); legend(
 
 % also save the loss-vs-units figure into the run folder so it's available visually
 % include the output loss-history figure (if present) when saving run figures
-figMap = struct('train', figTrain, 'val', figVal, 'loss_final', lossFigHandle, 'loss_before_revert', preRevertLossFigHandle, 'candidate_corr', corrFigHandle);
+figMap = struct('train', figTrain, 'val', figVal, 'loss', lossFigHandle, 'candidate_corr', corrFigHandle);
 if exist('lossHistoryFig','var') && ~isempty(lossHistoryFig) && ishandle(lossHistoryFig)
     figMap.loss_history = lossHistoryFig;
 end

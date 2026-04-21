@@ -1,0 +1,55 @@
+============================================
+SYSTEM IDENTIFICATION RUN LOG
+============================================
+
+Timestamp           : 2026-04-21_13-07-38
+Dataset             : twotankdata
+Model type          : tf
+Mode                : predict
+Sampling time       : 0.200000
+Train samples       : 2086
+Validation samples  : 894
+
+TF numerator order  : 10
+TF denominator order: 10
+TF input delay      : 0
+
+RMSE                : 0.6588259760
+MSE                 : 0.4340516666
+MAE                 : 0.5663747683
+Fit (%)             : -219.8971161338
+
+--------------------------------------------
+IDENTIFIED MODEL SUMMARY
+--------------------------------------------
+  <a href="matlab:helpPopup('idtf')" style="font-weight:bold">idtf</a> with properties:
+
+        Numerator: [0.0183 9.5917e+15 1.0754e+17 9.6318e+17 4.9291e+18 1.8470e+19 4.9752e+19 7.6859e+19 3.4759e+19 3.3877e+19 1.0954e+18]
+      Denominator: [1 1.6335e+17 2.1629e+18 1.7111e+19 1.2987e+20 3.0910e+20 1.5865e+21 6.8016e+20 9.2793e+20 2.0144e+19 2.6204e+19]
+         Variable: 's'
+          IODelay: 0
+        Structure: [1×1 pmodel.tf]
+    NoiseVariance: 0.6710
+       InputDelay: 0
+      OutputDelay: 0
+        InputName: {'u1'}
+        InputUnit: {''}
+       InputGroup: [1×1 struct]
+       OutputName: {'y1'}
+       OutputUnit: {''}
+      OutputGroup: [1×1 struct]
+            Notes: [0×1 string]
+         UserData: []
+             Name: ''
+               Ts: 0
+         TimeUnit: 'seconds'
+     SamplingGrid: [1×1 struct]
+           Report: [1×1 idresults.tfest]
+
+
+
+--------------------------------------------
+SAVED FIGURES
+--------------------------------------------
+log/twotankdata_tf_predict_2026-04-21_13-07-38/output_comparison.png
+log/twotankdata_tf_predict_2026-04-21_13-07-38/error_signal.png

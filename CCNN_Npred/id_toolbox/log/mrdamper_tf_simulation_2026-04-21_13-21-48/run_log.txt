@@ -1,0 +1,55 @@
+============================================
+SYSTEM IDENTIFICATION RUN LOG
+============================================
+
+Timestamp           : 2026-04-21_13-21-48
+Dataset             : mrdamper
+Model type          : tf
+Mode                : simulation
+Sampling time       : 0.010000
+Train samples       : 2449
+Validation samples  : 1050
+
+TF numerator order  : 10
+TF denominator order: 10
+TF input delay      : 0
+
+RMSE                : 31.6530858480
+MSE                 : 1001.9178436982
+MAE                 : 26.0755804676
+Fit (%)             : 45.0078226501
+
+--------------------------------------------
+IDENTIFIED MODEL SUMMARY
+--------------------------------------------
+  <a href="matlab:helpPopup('idtf')" style="font-weight:bold">idtf</a> with properties:
+
+        Numerator: [-2.0057 -342.5762 -3.2736e+03 -1.3560e+05 -5.7012e+05 -9.9640e+06 -2.8022e+07 -1.3130e+07 -8.9271e+07 … ] (1×11 double)
+      Denominator: [1 44.8417 637.5486 1.8624e+04 7.3832e+04 1.4294e+06 2.1910e+06 5.9760e+06 7.4252e+06 1.5201e+06 1.6598e+05]
+         Variable: 's'
+          IODelay: 0
+        Structure: [1×1 pmodel.tf]
+    NoiseVariance: 5.6955
+       InputDelay: 0
+      OutputDelay: 0
+        InputName: {'u1'}
+        InputUnit: {''}
+       InputGroup: [1×1 struct]
+       OutputName: {'y1'}
+       OutputUnit: {''}
+      OutputGroup: [1×1 struct]
+            Notes: [0×1 string]
+         UserData: []
+             Name: ''
+               Ts: 0
+         TimeUnit: 'seconds'
+     SamplingGrid: [1×1 struct]
+           Report: [1×1 idresults.tfest]
+
+
+
+--------------------------------------------
+SAVED FIGURES
+--------------------------------------------
+log/mrdamper_tf_simulation_2026-04-21_13-21-48/output_comparison.png
+log/mrdamper_tf_simulation_2026-04-21_13-21-48/error_signal.png

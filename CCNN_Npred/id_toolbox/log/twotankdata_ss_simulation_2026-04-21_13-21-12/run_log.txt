@@ -1,0 +1,56 @@
+============================================
+SYSTEM IDENTIFICATION RUN LOG
+============================================
+
+Timestamp           : 2026-04-21_13-21-12
+Dataset             : twotankdata
+Model type          : ss
+Mode                : simulation
+Sampling time       : 0.200000
+Train samples       : 2086
+Validation samples  : 894
+
+SS order            : 4
+
+RMSE                : 0.0727235645
+MSE                 : 0.0052887168
+MAE                 : 0.0638078827
+Fit (%)             : 64.6886136920
+
+--------------------------------------------
+IDENTIFIED MODEL SUMMARY
+--------------------------------------------
+  <a href="matlab:helpPopup('idss')" style="font-weight:bold">idss</a> with properties:
+
+                A: [4×4 double]
+                B: [4×1 double]
+                C: [4.9797 -0.1357 -0.0743 0.0033]
+                D: 0
+                K: [4×1 double]
+        StateName: {4×1 cell}
+        StateUnit: {4×1 cell}
+        Structure: [1×1 pmodel.ss]
+    NoiseVariance: 6.6301e-06
+       InputDelay: 0
+      OutputDelay: 0
+        InputName: {'u1'}
+        InputUnit: {''}
+       InputGroup: [1×1 struct]
+       OutputName: {'y1'}
+       OutputUnit: {''}
+      OutputGroup: [1×1 struct]
+            Notes: [0×1 string]
+         UserData: []
+             Name: ''
+               Ts: 0
+         TimeUnit: 'seconds'
+     SamplingGrid: [1×1 struct]
+           Report: [1×1 idresults.ssest]
+
+
+
+--------------------------------------------
+SAVED FIGURES
+--------------------------------------------
+log/twotankdata_ss_simulation_2026-04-21_13-21-12/output_comparison.png
+log/twotankdata_ss_simulation_2026-04-21_13-21-12/error_signal.png

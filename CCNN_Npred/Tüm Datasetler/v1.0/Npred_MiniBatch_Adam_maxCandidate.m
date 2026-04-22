@@ -43,19 +43,19 @@ config.model.diff_clip_lower = -50; % diff aktivasyonunda alt kırpma sınırı
 config.model.diff_clip_upper = 50; % diff aktivasyonunda üst kırpma sınırı
 config.model.hidden_bootstrap_count = 4; % ilk kaç gizli birimi zorunlu eklenir 
 config.model.hidden_acceptance_window = 3; % kabul kararı için kaç önceki gizli birimin ortalamasını kullanır
-config.model.max_hidden_units = 15; % en fazla kaç gizli birim ekleneceği
-config.model.force_hidden_growth = true; % true ise hedefe bakmadan gizli birim eklemeye devam eder
+config.model.max_hidden_units = 1; % en fazla kaç gizli birim ekleneceği
+config.model.force_hidden_growth = false; % true ise hedefe bakmadan gizli birim eklemeye devam eder
 config.model.target_mse = 5e-4;  % durdurma / hedefleme için istenen MSE seviyesi
 
 
 % Output-layer recursive simulation loss is evaluated every N epochs.
 config.model.sim_loss_eval_interval = 20; % recursive sim-loss kaç epochta bir ölçülecek
 config.model.sim_loss_min_blocks = 3; % plato kararından önce en az kaç blok çalışacak
-config.model.output_max_epochs = 300; % output katmanı için toplam epoch bütçesi
+config.model.output_max_epochs = 3; % output katmanı için toplam epoch bütçesi
 config.model.max_epochs_output = config.model.sim_loss_eval_interval; % tek blokta çalıştırılacak varsayılan epoch sayısı
 config.model.force_output_full_epochs = true; % true ise output katmanı bloklara bölünmeden tek parçada max epoch kadar koşar
 config.model.eta_output = 0.001; % output katmanı öğrenme oranı
-config.model.max_epochs_candidate = 300; % aday gizli biriminin en çok kaç epoch eğitileceği
+config.model.max_epochs_candidate = 3; % aday gizli biriminin en çok kaç epoch eğitileceği
 config.model.eta_candidate = 0.001; % aday gizli biriminin öğrenme oranı
 config.model.plateau_min_delta = 0;   % önceki pencere ortalamasına göre en küçük iyileşme eşiği
 

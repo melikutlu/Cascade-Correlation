@@ -1,0 +1,41 @@
+Data source : mrDamper
+CCNN Parameter Log
+Created      : 2026-04-22 17:45:15
+Script       : writeParameterLog.m
+Run folder   : fitTr77_fitVa75
+
+eta_out=0.0010 | eta_cand=0.0010 | output_epochs=300/20 | hidden=15/15 | regressors=2 | cand_runs=15
+Output plateau epoch : none
+Candidate epochs (per unit)  : [300 300 300 300 300 300 300 300 300 300 300 300 300 300 300]
+Candidate plateau epochs      : [NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN]
+Data source   : mrDamper
+N-step horizon : 20
+Train obj MSE  : 0.0528661
+Train series RMSE : 13.4829
+Val   RMSE      : 14.1159
+Train Fit (%)   : 77.00
+Val   Fit (%)   : 74.82
+
+MSE history (per hidden unit added): [0.233062520874497 0.229854088327979 0.210431563654011 0.154361818609698 0.158848705557426 0.10990108447294 0.0843237911392281 0.100367117152393 0.0747084634607373 0.0589755894632919 0.0590789867474834 0.0655525581488749 0.0524724381787212 0.0515680191399221 0.0418124054841057 0.0528661263557753]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff-tanh
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 300
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - fitTr77_fitVa75_20260422_174515_train_fit.png
+ - fitTr77_fitVa75_20260422_174515_val_fit.png
+ - fitTr77_fitVa75_20260422_174515_lossfinal_fit.png
+ - fitTr77_fitVa75_20260422_174515_lossbeforerevert_fit.png
+ - fitTr77_fitVa75_20260422_174515_candidatecorr_fit.png
+ - fitTr77_fitVa75_20260422_174515_losshistory_fit.png

@@ -23,11 +23,9 @@ function savedPaths = saveFitFigures(logFilePath, figMap)
         if isempty(figHandle) || ~ishandle(figHandle)
             continue;
         end
-        cleanLabel = lower(regexprep(labels{k},'[^A-Za-z0-9]',''));
-        if isempty(cleanLabel)
-            cleanLabel = sprintf('fig%d', k);
-        end
-        fileName = sprintf('%s_%s_fit.png', baseName, cleanLabel);
+        % Create readable filename from label
+        displayLabel = makeReadableLabel(labels{k});
+        fileName = sprintf('%s.png', displayLabel);
         filePath = fullfile(targetDir, fileName);
         try
             exportgraphics(figHandle, filePath, 'Resolution', 150);
@@ -41,4 +39,20 @@ function savedPaths = saveFitFigures(logFilePath, figMap)
         end
         savedPaths{end+1,1} = filePath; %#ok<AGROW>
     end
+end
+
+function readableLabel = makeReadableLabel(label)
+    % Convert label like 'loss_history' or 'candidateCorr' to 'Loss History'
+    label = strtrim(string(label));
+    
+    % Replace underscores with spaces
+    label = replace(label, '_', ' ');
+    
+    % Insert space before capital letters (for camelCase)
+    label = regexprep(label, '([a-z])([A-Z])', '$1 $2');
+    
+    % Capitalize first letter of each word
+    label = regexprep(label, '(^|\s)(\w)', '${upper($2)}');
+    
+    readableLabel = char(label);
 end

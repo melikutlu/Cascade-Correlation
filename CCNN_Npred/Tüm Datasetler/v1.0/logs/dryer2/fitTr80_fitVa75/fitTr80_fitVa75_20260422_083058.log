@@ -1,0 +1,42 @@
+Data source : dryer2
+CCNN Parameter Log
+Created      : 2026-04-22 08:30:58
+Script       : writeParameterLog.m
+Run folder   : fitTr80_fitVa75
+
+eta_out=0.0010 | eta_cand=0.0010 | output_epochs=300/20 | hidden=15/15 | regressors=2 | cand_runs=15
+Output plateau epoch : none
+Candidate epochs (per unit)  : [300 300 300 300 300 300 300 300 300 300 300 300 300 300 300]
+Candidate plateau epochs      : [NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN]
+Data source   : dryer2
+Dryer2 sampling time   : 0.08
+N-step horizon : 20
+Train obj MSE  : 0.0398995
+Train series RMSE : 0.167409
+Val   RMSE      : 0.203932
+Train Fit (%)   : 80.02
+Val   Fit (%)   : 75.11
+
+MSE history (per hidden unit added): [0.371128033730209 0.121898288474102 0.097923390927078 0.0624721852249868 0.0577260310197185 0.0929110403760899 0.0600929996069843 0.0626526022779978 0.0597166642367953 0.0468224929317388 0.0554068215646675 0.042155241226199 0.0457944907231559 0.0625180798066176 0.0503774730317136 0.0398994537186283]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff-tanh
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 300
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - fitTr80_fitVa75_20260422_083058_train_fit.png
+ - fitTr80_fitVa75_20260422_083058_val_fit.png
+ - fitTr80_fitVa75_20260422_083058_lossfinal_fit.png
+ - fitTr80_fitVa75_20260422_083058_lossbeforerevert_fit.png
+ - fitTr80_fitVa75_20260422_083058_candidatecorr_fit.png
+ - fitTr80_fitVa75_20260422_083058_losshistory_fit.png

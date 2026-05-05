@@ -28,6 +28,17 @@ function config = applyDatasetDefaults(config)
         otherwise
             error('Unknown data source: %s', config.data.source);
     end
+
+    if ~isfield(config, 'model') || ~isfield(config.model, 'tustin_sample_time') || isempty(config.model.tustin_sample_time)
+        switch source
+            case {"twotankdata", "twotank", "two_tank", "twotankdataset"}
+                config.model.tustin_sample_time = config.data.twotank.sampling_time;
+            case {"dryer2", "dryer", "dryerdataset"}
+                config.model.tustin_sample_time = config.data.dryer2.sampling_time;
+            otherwise
+                config.model.tustin_sample_time = 1;
+        end
+    end
 end
 
 function s = setDefaultField(s, fieldName, value)

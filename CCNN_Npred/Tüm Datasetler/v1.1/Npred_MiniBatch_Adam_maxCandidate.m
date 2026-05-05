@@ -38,27 +38,27 @@ config.regressors.include_bias = false; % sabit bias regressor'ü ekle veya çı
 
 % model / training
 % activation options: 'tanh', 'sigmoid', 'diff', 'diff-tanh', 'tustin', 'tanh-tustin', 'sigmoid-tustin'
-config.model.activation = 'diff-tanh'; % gizli katman aktivasyon tipi
-config.model.use_activation_clipping = true; % tanh dahil aktivasyon clipping açık/kapalı
-config.model.tustin_sample_time = 1; % tustin için örnekleme süresi
+config.model.activation = 'tustin'; % gizli katman aktivasyon tipi
+config.model.use_activation_clipping = false; % aktivasyon clipping açık/kapalı
+config.model.tustin_sample_time = []; % boşsa dataset sampling_time kullanılır; yoksa 1'e düşer
 config.model.diff_clip_lower = -50; % diff aktivasyonunda alt kırpma sınırı
 config.model.diff_clip_upper = 50; % diff aktivasyonunda üst kırpma sınırı
 config.model.hidden_bootstrap_count = 4; % ilk kaç gizli birimi zorunlu eklenir 
 config.model.hidden_acceptance_window = 3; % kabul kararı için kaç önceki gizli birimin ortalamasını kullanır
-config.model.max_hidden_units = 5; % en fazla kaç gizli birim ekleneceği
-config.model.force_hidden_growth = true; % true ise hedefe bakmadan gizli birim eklemeye devam eder
+config.model.max_hidden_units = 15; % en fazla kaç gizli birim ekleneceği
+config.model.force_hidden_growth = false; % true ise hedefe bakmadan gizli birim eklemeye devam eder
 config.model.target_mse = 5e-4;  % durdurma / hedefleme için istenen MSE seviyesi
 
 
 % Output-layer recursive simulation loss is evaluated every N epochs.
 config.model.sim_loss_eval_interval = 20; % recursive sim-loss kaç epochta bir ölçülecek
 config.model.sim_loss_min_blocks = 3; % plato kararından önce en az kaç blok çalışacak
-config.model.output_max_epochs = 30; % output katmanı için toplam epoch bütçesi
+config.model.output_max_epochs = 100; % output katmanı için toplam epoch bütçesi
 config.model.max_epochs_output = config.model.sim_loss_eval_interval; % tek blokta çalıştırılacak varsayılan epoch sayısı
 config.model.force_output_full_epochs = true; % true ise output katmanı bloklara bölünmeden tek parçada max epoch kadar koşar
 config.model.eta_output = 0.001; % output katmanı öğrenme oranı
-config.model.max_epochs_candidate = 30; % aday gizli biriminin en çok kaç epoch eğitileceği
-config.model.eta_candidate = 0.001; % aday gizli biriminin öğrenme oranı
+config.model.max_epochs_candidate = 100; % aday gizli biriminin en çok kaç epoch eğitileceği
+config.model.eta_candidate = 0.01; % aday gizli biriminin öğrenme oranı
 config.model.plateau_min_delta = 0;   % önceki pencere ortalamasına göre en küçük iyileşme eşiği
 
 config.model.moving_avg_window = 20;      % plato kontrolünde kaç önceki epochun ortalamasının kullanılacağı

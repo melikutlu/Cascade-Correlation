@@ -13,7 +13,7 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     N = size(U,2);
     v = dlarray(zeros(M,N));
 
-    % Turev operatoru aktivasyonda hesaplanir; ilk adimda z_prev = 0 alinir.
+    % Turev operatoru aktivasyonda hesaplanir; Tustin modunda ek state tutulur.
     nWarmupSteps = 1;
 
     % Full y-history buffer: yhist(:,L) = y(t0-L), works for any lag combination
@@ -30,6 +30,14 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
         z_prev_hidden{h} = dlarray(zeros(M,1));
     end
     z_prev_cand = dlarray(zeros(M,1));
+    useTustinState = isfield(config, 'model') && isfield(config.model, 'activation') && contains(lower(string(config.model.activation)), "tustin");
+    tustin_state_hidden = cell(numel(W_hidden),1);
+    if useTustinState
+        for h=1:numel(W_hidden)
+            tustin_state_hidden{h,1} = dlarray(zeros(M,1));
+        end
+    end
+    tustin_state_cand = dlarray(zeros(M,1));
 
     for t=1:N
         % u part
@@ -56,13 +64,21 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
         
         for h=1:numel(W_hidden)
             z_h = x_t * W_hidden{h};
-            a_h = applyHiddenActivation(z_h, z_prev_hidden{h}, g, config);
+            if useTustinState
+                [a_h, tustin_state_hidden{h}] = applyHiddenActivation(z_h, z_prev_hidden{h}, g, config, tustin_state_hidden{h});
+            else
+                a_h = applyHiddenActivation(z_h, z_prev_hidden{h}, g, config);
+            end
             z_prev_hidden{h} = z_h;
             x_t = [x_t, a_h];
         end
         x_t = dlarray(x_t);
         z_c = x_t * w_h;
-        v(:,t) = applyHiddenActivation(z_c, z_prev_cand, g, config);
+        if useTustinState
+            [v(:,t), tustin_state_cand] = applyHiddenActivation(z_c, z_prev_cand, g, config, tustin_state_cand);
+        else
+            v(:,t) = applyHiddenActivation(z_c, z_prev_cand, g, config);
+        end
         z_prev_cand = z_c;
 
         % advance history with the current model prediction (same as forwardModelTrajectory)

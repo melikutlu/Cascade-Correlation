@@ -8,6 +8,8 @@ Date: 2026-05-05
 - Added validation-selected final model metadata and per-stage histories to the parameter log output.
 - Added an on/off activation clipping flag so clipping can be disabled globally, and made the clipping logic apply only to the final activation output for tanh and diff-style activations when enabled.
 - Added new Tustin-style activation modes: `tustin`, `tanh-tustin`, and `sigmoid-tustin`.
+- Switched the Tustin modes to the classical stateful bilinear recurrence with per-hidden-unit internal state across each sequence.
+- Tustin sample time now defaults from dataset metadata when available, and falls back to 1 only when the dataset does not provide one or the user leaves it empty.
 
 Date: 2026-04-14
 

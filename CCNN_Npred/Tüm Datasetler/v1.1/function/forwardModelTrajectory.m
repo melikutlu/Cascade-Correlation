@@ -8,7 +8,7 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
     nu = numel(ulags); 
     ny = numel(ylags);
 
-    % Turev operatoru aktivasyonda hesaplanir; ilk adimda z_prev = 0 alinir.
+    % Turev operatoru aktivasyonda hesaplanir; Tustin modunda ek state tutulur.
     nWarmupSteps = 1;
     
     % X0 shape: (M, nWarmupSteps, nu+ny)
@@ -24,6 +24,13 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
     z_history = cell(nHidden, 1);
     for h = 1:nHidden
         z_history{h, 1} = dlarray(zeros(M, 1));
+    end
+    useTustinState = isfield(config, 'model') && isfield(config.model, 'activation') && contains(lower(string(config.model.activation)), "tustin");
+    tustin_state = cell(nHidden, 1);
+    if useTustinState
+        for h = 1:nHidden
+            tustin_state{h, 1} = dlarray(zeros(M, 1));
+        end
     end
 
     % ========== MAIN PREDICTION PHASE ==========
@@ -58,8 +65,12 @@ function Y = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config)
         
         for h = 1:nHidden
     z = x * W_hidden{h};
-    
-    a = applyHiddenActivation(z, z_history{h,1}, g, config);
+
+    if useTustinState
+        [a, tustin_state{h,1}] = applyHiddenActivation(z, z_history{h,1}, g, config, tustin_state{h,1});
+    else
+        a = applyHiddenActivation(z, z_history{h,1}, g, config);
+    end
 
     
     if t <= 20  % sadece ilk 5 adımı logla

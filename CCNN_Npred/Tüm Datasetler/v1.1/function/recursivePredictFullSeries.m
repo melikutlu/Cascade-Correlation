@@ -10,10 +10,17 @@ function Yhat = recursivePredictFullSeries(U, Y, W_hidden, w_o, g, config)
     W_local = cellfun(@gather, W_hidden, 'UniformOutput', false);
     w_o_local = gather(w_o);
 
-    % Bu surumde diferansiyel aktivasyon sabit 1. derecedir.
+    % Bu surumde diferansiyel aktivasyon sabit 1. derecedir; Tustin modunda ek state tutulur.
     z_history = cell(numel(W_local), 1);
     for h=1:numel(W_local)
         z_history{h, 1} = 0;
+    end
+    useTustinState = isfield(config, 'model') && isfield(config.model, 'activation') && contains(lower(string(config.model.activation)), "tustin");
+    tustin_state = cell(numel(W_local), 1);
+    if useTustinState
+        for h=1:numel(W_local)
+            tustin_state{h, 1} = 0;
+        end
     end
 
     for k=2:N
@@ -24,8 +31,12 @@ function Yhat = recursivePredictFullSeries(U, Y, W_hidden, w_o, g, config)
         for h=1:numel(W_local)
             z = x*W_local{h}; 
             
-            % diff1: z - z_prev
-            a = applyHiddenActivation(z, z_history{h, 1}, g, config);
+            % diff1: z - z_prev; Tustin modunda ek state kullanilir.
+            if useTustinState
+                [a, tustin_state{h, 1}] = applyHiddenActivation(z, z_history{h, 1}, g, config, tustin_state{h, 1});
+            else
+                a = applyHiddenActivation(z, z_history{h, 1}, g, config);
+            end
 
             z_history{h, 1} = z;
             

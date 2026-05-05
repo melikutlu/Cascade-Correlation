@@ -85,20 +85,61 @@ function logFilePath = writeParameterLog(config, logInfo)
 
     fprintf(fid, 'N-step horizon : %d\n', logInfo.n_steps);
     fprintf(fid, 'Train obj MSE  : %.6g\n', logInfo.train_mse);
+    if isfield(logInfo, 'val_mse')
+        fprintf(fid, 'Val   obj MSE  : %.6g\n', logInfo.val_mse);
+    end
     fprintf(fid, 'Train series RMSE : %.6g\n', logInfo.rmse_train);
     fprintf(fid, 'Val   RMSE      : %.6g\n', logInfo.rmse_val);
     fprintf(fid, 'Train Fit (%%)   : %.2f\n', logInfo.fit_train);
     fprintf(fid, 'Val   Fit (%%)   : %.2f\n\n', logInfo.fit_val);
 
-    % include per-unit MSE history so the log contains the loss progression
+    if isfield(logInfo, 'hidden_stage_counts') && ~isempty(logInfo.hidden_stage_counts)
+        fprintf(fid, 'Hidden units per stage : %s\n', formatArrayField(logInfo.hidden_stage_counts));
+    end
+    if isfield(logInfo, 'train_mse_history') && ~isempty(logInfo.train_mse_history)
+        fprintf(fid, 'Train obj MSE history  : %s\n', formatArrayField(logInfo.train_mse_history));
+    end
+    if isfield(logInfo, 'val_mse_history') && ~isempty(logInfo.val_mse_history)
+        fprintf(fid, 'Val   obj MSE history  : %s\n', formatArrayField(logInfo.val_mse_history));
+    end
+    if isfield(logInfo, 'train_rmse_history') && ~isempty(logInfo.train_rmse_history)
+        fprintf(fid, 'Train RMSE history     : %s\n', formatArrayField(logInfo.train_rmse_history));
+    end
+    if isfield(logInfo, 'val_rmse_history') && ~isempty(logInfo.val_rmse_history)
+        fprintf(fid, 'Val   RMSE history     : %s\n', formatArrayField(logInfo.val_rmse_history));
+    end
+    if isfield(logInfo, 'train_fit_history') && ~isempty(logInfo.train_fit_history)
+        fprintf(fid, 'Train Fit history (%%)  : %s\n', formatArrayField(logInfo.train_fit_history));
+    end
+    if isfield(logInfo, 'val_fit_history') && ~isempty(logInfo.val_fit_history)
+        fprintf(fid, 'Val   Fit history (%%)  : %s\n', formatArrayField(logInfo.val_fit_history));
+    end
+    if isfield(logInfo, 'best_validation_stage_index')
+        fprintf(fid, 'Best validation stage  : #%d (hidden=%d)\n', logInfo.best_validation_stage_index, logInfo.best_validation_stage_hidden_units);
+        fprintf(fid, 'Best validation metric : %s = %.6g\n', logInfo.best_validation_selection_metric, logInfo.best_validation_score_value);
+    end
+    if isfield(logInfo, 'hidden_growth_reverted_to_baseline') && logInfo.hidden_growth_reverted_to_baseline
+        fprintf(fid, 'Hidden growth reverted to baseline during search.\n');
+    end
+    if isfield(logInfo, 'hidden_stage_counts') && isfield(logInfo, 'best_validation_stage_index') ...
+            && logInfo.best_validation_stage_index < numel(logInfo.hidden_stage_counts)
+        fprintf(fid, 'Final model note : selected from an earlier validation stage, not the last hidden-added stage.\n');
+    end
+
+    % include per-unit MSE history so the final selected prefix is visible in the log
     if isfield(logInfo,'mse_history') && ~isempty(logInfo.mse_history)
-        fprintf(fid, 'MSE history (per hidden unit added): %s\n', formatArrayField(logInfo.mse_history));
+        fprintf(fid, 'MSE history (final selected prefix): %s\n', formatArrayField(logInfo.mse_history));
     end
 
     fprintf(fid, 'Regressors.u : %s\n', mat2str(logInfo.regressors_u));
     fprintf(fid, 'Regressors.y : %s\n', mat2str(logInfo.regressors_y));
     fprintf(fid, 'Norm method  : %s\n', config.norm_method);
     fprintf(fid, 'Activation   : %s\n', logInfo.activation);
+    activationClipping = 1;
+    if isfield(config.model, 'use_activation_clipping') && ~isempty(config.model.use_activation_clipping)
+        activationClipping = double(logical(config.model.use_activation_clipping));
+    end
+    fprintf(fid, 'Activation clipping : %d\n', activationClipping);
     fprintf(fid, 'Diff clip lower : %.6g\n', config.model.diff_clip_lower);
     fprintf(fid, 'Diff clip upper : %.6g\n', config.model.diff_clip_upper);
     if isfield(config.model, 'sim_loss_eval_interval')

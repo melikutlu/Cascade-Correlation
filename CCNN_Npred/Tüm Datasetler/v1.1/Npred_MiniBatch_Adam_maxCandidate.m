@@ -39,11 +39,12 @@ config.regressors.include_bias = false; % sabit bias regressor'ü ekle veya çı
 % model / training
 % activation options: 'tanh' , 'diff' , 'diff-tanh'
 config.model.activation = 'diff-tanh'; % gizli katman aktivasyon tipi
+config.model.use_activation_clipping = true; % tanh dahil aktivasyon clipping açık/kapalı
 config.model.diff_clip_lower = -50; % diff aktivasyonunda alt kırpma sınırı
 config.model.diff_clip_upper = 50; % diff aktivasyonunda üst kırpma sınırı
 config.model.hidden_bootstrap_count = 4; % ilk kaç gizli birimi zorunlu eklenir 
 config.model.hidden_acceptance_window = 3; % kabul kararı için kaç önceki gizli birimin ortalamasını kullanır
-config.model.max_hidden_units = 15; % en fazla kaç gizli birim ekleneceği
+config.model.max_hidden_units = 5; % en fazla kaç gizli birim ekleneceği
 config.model.force_hidden_growth = true; % true ise hedefe bakmadan gizli birim eklemeye devam eder
 config.model.target_mse = 5e-4;  % durdurma / hedefleme için istenen MSE seviyesi
 
@@ -51,11 +52,11 @@ config.model.target_mse = 5e-4;  % durdurma / hedefleme için istenen MSE seviye
 % Output-layer recursive simulation loss is evaluated every N epochs.
 config.model.sim_loss_eval_interval = 20; % recursive sim-loss kaç epochta bir ölçülecek
 config.model.sim_loss_min_blocks = 3; % plato kararından önce en az kaç blok çalışacak
-config.model.output_max_epochs = 300; % output katmanı için toplam epoch bütçesi
+config.model.output_max_epochs = 30; % output katmanı için toplam epoch bütçesi
 config.model.max_epochs_output = config.model.sim_loss_eval_interval; % tek blokta çalıştırılacak varsayılan epoch sayısı
 config.model.force_output_full_epochs = true; % true ise output katmanı bloklara bölünmeden tek parçada max epoch kadar koşar
 config.model.eta_output = 0.001; % output katmanı öğrenme oranı
-config.model.max_epochs_candidate = 300; % aday gizli biriminin en çok kaç epoch eğitileceği
+config.model.max_epochs_candidate = 30; % aday gizli biriminin en çok kaç epoch eğitileceği
 config.model.eta_candidate = 0.001; % aday gizli biriminin öğrenme oranı
 config.model.plateau_min_delta = 0;   % önceki pencere ortalamasına göre en küçük iyileşme eşiği
 
@@ -111,7 +112,14 @@ current_mse = mean((Ytr(2:end) - Yhat_tmp(2:end)).^2);
 Yhat_tmp_raw = Yhat_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
 stage0_rmse = sqrt(mean((Ytr_raw(2:end) - Yhat_tmp_raw).^2));
 stage0_fit  = fitPercent(Ytr_raw(2:end), Yhat_tmp_raw);
-fprintf('--- Hidden=0 | MSE=%.6g | RMSE=%.4g | Fit=%.2f%% ---\n', current_mse, stage0_rmse, stage0_fit);
+
+Yhat_va_tmp = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, config.model.activation, config);
+val_mse_tmp = mean((Yva(2:end) - Yhat_va_tmp(2:end)).^2);
+Yhat_va_tmp_raw = Yhat_va_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
+stage0_val_rmse = sqrt(mean((Yva_raw(2:end) - Yhat_va_tmp_raw).^2));
+stage0_val_fit = fitPercent(Yva_raw(2:end), Yhat_va_tmp_raw);
+fprintf('--- Hidden=0 | Train: MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | Val: MSE=%.6g | RMSE=%.4g | Fit=%.2f%% ---\n', ...
+    current_mse, stage0_rmse, stage0_fit, val_mse_tmp, stage0_val_rmse, stage0_val_fit);
 
 baselineW_hidden = W_hidden;
 baselineW_o = w_o;
@@ -121,6 +129,16 @@ hiddenAcceptanceWindow = max(1, round(config.model.hidden_acceptance_window));
 acceptedHiddenMseHistory = zeros(0, 1);
 hiddenGrowthRevertedToBaseline = false;
 hiddenGrowthStoppedByMse = false;
+
+hiddenStageCounts = 0;
+trainMseHistory = current_mse;
+valMseHistory = val_mse_tmp;
+trainRmseHistory = stage0_rmse;
+valRmseHistory = stage0_val_rmse;
+trainFitHistory = stage0_fit;
+valFitHistory = stage0_val_fit;
+wHiddenHistory = {W_hidden};
+wOHistory = {w_o};
 
 if isfield(outputTrainInfo,'stop_by_sim_plateau') && outputTrainInfo.stop_by_sim_plateau
     fprintf('Output layer simulation plateau at epoch %d (ran %d epochs across %d blocks).\n', ...
@@ -134,7 +152,7 @@ if isfield(outputTrainInfo,'sim_loss_history') && ~isempty(outputTrainInfo.sim_l
     fprintf('Output sim-loss history per block: %s\n', mat2str(outputTrainInfo.sim_loss_history, 5));
 end
 
-mse_hist = current_mse;
+mse_hist = trainMseHistory;
 preRevertMseHist = [];
 
 candidateEpochHistory = [];
@@ -249,20 +267,40 @@ while numel(W_hidden) < config.model.max_hidden_units
     end
 
     acceptedHiddenMseHistory(end+1, 1) = current_mse; %#ok<AGROW>
-    mse_hist(end+1) = current_mse;
     Yhat_stage_raw = Yhat_tmp(2:end) * norm_stats.y_std + norm_stats.y_mu;
-    stage_rmse = sqrt(mean((Ytr_raw(2:end) - Yhat_stage_raw).^2));
-    stage_fit  = fitPercent(Ytr_raw(2:end), Yhat_stage_raw);
+    stageTrainRmse = sqrt(mean((Ytr_raw(2:end) - Yhat_stage_raw).^2));
+    stageTrainFit  = fitPercent(Ytr_raw(2:end), Yhat_stage_raw);
+
+    Yhat_va_stage = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, config.model.activation, config);
+    if any(isnan(Yhat_va_stage(:))) || any(isinf(Yhat_va_stage(:)))
+        fprintf('WARNING: Yhat_va_stage contains NaN or Inf values! Activation explosion detected.\n');
+        fprintf('  NaN count: %d, Inf count: %d\n', sum(isnan(Yhat_va_stage(:))), sum(isinf(Yhat_va_stage(:))));
+    end
+    stageValMse = mean((Yva(2:end) - Yhat_va_stage(2:end)).^2);
+    Yhat_va_stage_raw = Yhat_va_stage(2:end) * norm_stats.y_std + norm_stats.y_mu;
+    stageValRmse = sqrt(mean((Yva_raw(2:end) - Yhat_va_stage_raw).^2));
+    stageValFit  = fitPercent(Yva_raw(2:end), Yhat_va_stage_raw);
+
+    hiddenStageCounts(end+1) = numel(W_hidden); %#ok<AGROW>
+    trainMseHistory(end+1) = current_mse; %#ok<AGROW>
+    valMseHistory(end+1) = stageValMse; %#ok<AGROW>
+    trainRmseHistory(end+1) = stageTrainRmse; %#ok<AGROW>
+    valRmseHistory(end+1) = stageValRmse; %#ok<AGROW>
+    trainFitHistory(end+1) = stageTrainFit; %#ok<AGROW>
+    valFitHistory(end+1) = stageValFit; %#ok<AGROW>
+    wHiddenHistory{end+1} = W_hidden; %#ok<AGROW>
+    wOHistory{end+1} = w_o; %#ok<AGROW>
+    mse_hist = trainMseHistory;
 
     if config.model.force_hidden_growth
-        fprintf('--- Hidden=%d/%d | MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | improvement=%.3g | force=ON ---\n', ...
-            numel(W_hidden), config.model.max_hidden_units, current_mse, stage_rmse, stage_fit, improvement);
+        fprintf('--- Hidden=%d/%d | Train: MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | Val: MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | improvement=%.3g | force=ON ---\n', ...
+            numel(W_hidden), config.model.max_hidden_units, current_mse, stageTrainRmse, stageTrainFit, stageValMse, stageValRmse, stageValFit, improvement);
     elseif acceptedHiddenCount < hiddenBootstrapCount
-        fprintf('--- Hidden=%d/%d | bootstrap trial | MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | improvement=%.3g ---\n', ...
-            numel(W_hidden), config.model.max_hidden_units, current_mse, stage_rmse, stage_fit, improvement);
+        fprintf('--- Hidden=%d/%d | bootstrap trial | Train: MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | Val: MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | improvement=%.3g ---\n', ...
+            numel(W_hidden), config.model.max_hidden_units, current_mse, stageTrainRmse, stageTrainFit, stageValMse, stageValRmse, stageValFit, improvement);
     else
-        fprintf('--- Hidden=%d | accepted | MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | improvement=%.3g | refAvg=%.6g ---\n', ...
-            numel(W_hidden), current_mse, stage_rmse, stage_fit, improvement, referenceMse);
+        fprintf('--- Hidden=%d | accepted | Train: MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | Val: MSE=%.6g | RMSE=%.4g | Fit=%.2f%% | improvement=%.3g | refAvg=%.6g ---\n', ...
+            numel(W_hidden), current_mse, stageTrainRmse, stageTrainFit, stageValMse, stageValRmse, stageValFit, improvement, referenceMse);
     end
 
     if ~config.model.force_hidden_growth && numel(acceptedHiddenMseHistory) == hiddenBootstrapCount
@@ -304,8 +342,45 @@ while numel(W_hidden) < config.model.max_hidden_units
 end
 
 if isempty(preRevertMseHist)
-    preRevertMseHist = mse_hist;
+    preRevertMseHist = trainMseHistory;
 end
+
+finiteValFitIdx = find(isfinite(valFitHistory));
+if ~isempty(finiteValFitIdx)
+    finiteValFits = valFitHistory(finiteValFitIdx);
+    bestValFit = max(finiteValFits);
+    bestFitCandidates = finiteValFitIdx(finiteValFits == bestValFit);
+    if numel(bestFitCandidates) > 1
+        candidateValRmses = valRmseHistory(bestFitCandidates);
+        [~, bestCandidateLocalIdx] = min(candidateValRmses);
+        bestStageIdx = bestFitCandidates(bestCandidateLocalIdx);
+    else
+        bestStageIdx = bestFitCandidates(1);
+    end
+    bestSelectionMetricLabel = 'validation fit';
+    bestSelectionMetricValue = valFitHistory(bestStageIdx);
+else
+    finiteValRmseIdx = find(isfinite(valRmseHistory));
+    if ~isempty(finiteValRmseIdx)
+        finiteValRmses = valRmseHistory(finiteValRmseIdx);
+        [bestValRmse, bestCandidateLocalIdx] = min(finiteValRmses);
+        bestStageIdx = finiteValRmseIdx(bestCandidateLocalIdx);
+        bestSelectionMetricLabel = 'validation RMSE';
+        bestSelectionMetricValue = bestValRmse;
+    else
+        bestStageIdx = numel(hiddenStageCounts);
+        bestSelectionMetricLabel = 'latest stage';
+        bestSelectionMetricValue = NaN;
+    end
+end
+
+W_hidden = wHiddenHistory{bestStageIdx};
+w_o = wOHistory{bestStageIdx};
+selectedHiddenCount = hiddenStageCounts(bestStageIdx);
+mse_hist = trainMseHistory(1:bestStageIdx);
+
+fprintf('\nValidation-selected final model: hidden=%d (stage %d/%d) | %s=%.6g\n', ...
+    selectedHiddenCount, bestStageIdx, numel(hiddenStageCounts), bestSelectionMetricLabel, bestSelectionMetricValue);
 
 [lossPlotHandle, lossFigHandle] = updateLossFigure(lossPlotHandle, lossFigHandle, mse_hist, ...
     'Train MSE vs Hidden Units - Final Model', 'Train MSE vs Hidden Units (Final Model)');
@@ -313,21 +388,26 @@ end
     'Train MSE vs Hidden Units - Before Revert', 'Train MSE vs Hidden Units (Before Revert)');
 
 % Full-series recursive prediction and denormalize
-Yhat_tr = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
-Yhat_va = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, config.model.activation, config);
+Yhat_tr_norm = recursivePredictFullSeries(Utr, Ytr, W_hidden, w_o, config.model.activation, config);
+Yhat_va_norm = recursivePredictFullSeries(Uva, Yva, W_hidden, w_o, config.model.activation, config);
 
 % Son kontrol
-if any(isnan(Yhat_tr(:))) || any(isinf(Yhat_tr(:)))
-    fprintf('WARNING: Yhat_tr contains NaN/Inf (%.0f NaN, %.0f Inf)\n', sum(isnan(Yhat_tr(:))), sum(isinf(Yhat_tr(:))));
+if any(isnan(Yhat_tr_norm(:))) || any(isinf(Yhat_tr_norm(:)))
+    fprintf('WARNING: Yhat_tr contains NaN/Inf (%.0f NaN, %.0f Inf)\n', sum(isnan(Yhat_tr_norm(:))), sum(isinf(Yhat_tr_norm(:))));
+end
+if any(isnan(Yhat_va_norm(:))) || any(isinf(Yhat_va_norm(:)))
+    fprintf('WARNING: Yhat_va contains NaN/Inf (%.0f NaN, %.0f Inf)\n', sum(isnan(Yhat_va_norm(:))), sum(isinf(Yhat_va_norm(:))));
 end
 
-Yhat_tr = Yhat_tr(2:end) * norm_stats.y_std + norm_stats.y_mu;
-Yhat_va = Yhat_va(2:end) * norm_stats.y_std + norm_stats.y_mu;
+Yhat_tr = Yhat_tr_norm(2:end) * norm_stats.y_std + norm_stats.y_mu;
+Yhat_va = Yhat_va_norm(2:end) * norm_stats.y_std + norm_stats.y_mu;
 
 fit_tr = fitPercent(Ytr_raw(2:end), Yhat_tr);
 fit_va = fitPercent(Yva_raw(2:end), Yhat_va);
 rmse_tr = sqrt(mean((Ytr_raw(2:end) - Yhat_tr).^2));
 rmse_va = sqrt(mean((Yva_raw(2:end) - Yhat_va).^2));
+current_mse = mean((Ytr(2:end) - Yhat_tr_norm(2:end)).^2);
+finalValMse = mean((Yva(2:end) - Yhat_va_norm(2:end)).^2);
 fprintf('\nTrain Fit: %.2f%% (RMSE=%.4g) | Val Fit: %.2f%% (RMSE=%.4g)\n', fit_tr, rmse_tr, fit_va, rmse_va);
 
 % Persist key hyperparameters so manual tweaks are traceable.
@@ -351,18 +431,31 @@ logInfo.plateau_min_delta = config.model.plateau_min_delta;
 logInfo.moving_avg_window = config.model.moving_avg_window;
 logInfo.hidden_units = numel(W_hidden);
 logInfo.max_hidden_units = config.model.max_hidden_units;
+logInfo.hidden_stage_counts = hiddenStageCounts;
+logInfo.train_mse_history = trainMseHistory;
+logInfo.val_mse_history = valMseHistory;
+logInfo.train_rmse_history = trainRmseHistory;
+logInfo.val_rmse_history = valRmseHistory;
+logInfo.train_fit_history = trainFitHistory;
+logInfo.val_fit_history = valFitHistory;
+logInfo.best_validation_stage_index = bestStageIdx;
+logInfo.best_validation_stage_hidden_units = selectedHiddenCount;
+logInfo.best_validation_selection_metric = bestSelectionMetricLabel;
+logInfo.best_validation_score_value = bestSelectionMetricValue;
 logInfo.regressor_count = numel(config.regressors.u) + numel(config.regressors.y);
 logInfo.regressors_u = config.regressors.u;
 logInfo.regressors_y = config.regressors.y;
 logInfo.n_steps = Npred;
 logInfo.train_mse = current_mse;
+logInfo.val_mse = finalValMse;
 logInfo.fit_train = fit_tr;
 logInfo.fit_val = fit_va;
 logInfo.rmse_train = rmse_tr;
 logInfo.rmse_val = rmse_va;
 logInfo.activation = config.model.activation;
 logInfo.hidden_baseline_mse = baselineMse;
-logInfo.hidden_accepted_mse_history = acceptedHiddenMseHistory;
+logInfo.hidden_accepted_mse_history = trainMseHistory(2:end);
+logInfo.hidden_accepted_val_mse_history = valMseHistory(2:end);
 logInfo.hidden_growth_reverted_to_baseline = double(hiddenGrowthRevertedToBaseline);
 logInfo.hidden_growth_stopped_by_mse = double(hiddenGrowthStoppedByMse);
 % include training progress history so it is available to the log writer

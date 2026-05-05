@@ -12,6 +12,8 @@ function [X0, Useq, Tseq] = createTrajectoryDataset(U, Y, config, N)
     
     % Veri sayısı
     Ns = length(Y) - N - totalInitDelay + 1; 
+
+
     
     if Ns < 1
         error('Not enough data. Need at least %d samples for %d-step predictions', ...

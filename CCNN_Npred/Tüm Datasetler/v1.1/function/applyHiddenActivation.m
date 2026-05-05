@@ -43,6 +43,11 @@ function a = applyHiddenActivation(z, z_prev, g, config)
         clipUpper = tmp;
     end
 
+    clipEnabled = true;
+    if isfield(config, 'model') && isfield(config.model, 'use_activation_clipping') && ~isempty(config.model.use_activation_clipping)
+        clipEnabled = logical(config.model.use_activation_clipping);
+    end
+
     dzdk = diffByStepOperator(z, z_prev);
 
     switch mode
@@ -53,23 +58,25 @@ function a = applyHiddenActivation(z, z_prev, g, config)
             
             % Element-wise bölme (dlarray)
             a = dzdk ./ (abs(z_prev) + epsilon);
-            
-            % Gradient clipping (dlarray)
-            a = max(min(a, clipUpper), clipLower);
+            if clipEnabled
+                a = max(min(a, clipUpper), clipLower);
+            end
         case {"diff-tanh", "diff_tanh"}
 
             epsilon = max(1e-2, 0.01 * max(abs(z_prev)));
             
             % Element-wise bölme (dlarray)
             k = dzdk ./ (abs(z_prev) + epsilon);
-            
-            % Gradient clipping (dlarray)
-            k = max(min(k, clipUpper), clipLower);
-
 
             a = g(k);
+            if clipEnabled
+                a = max(min(a, clipUpper), clipLower);
+            end
         otherwise
             a = g(z);
+            if clipEnabled
+                a = max(min(a, clipUpper), clipLower);
+            end
     end
 end
 

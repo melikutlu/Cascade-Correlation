@@ -7,6 +7,7 @@ Date: 2026-05-05
 - Kept hidden growth decisions on the train-side acceptance logic; only the final model selection now chooses the best validation stage.
 - Added validation-selected final model metadata and per-stage histories to the parameter log output.
 - Added an on/off activation clipping flag so clipping can be disabled globally, and made the clipping logic apply only to the final activation output for tanh and diff-style activations when enabled.
+- Added new Tustin-style activation modes: `tustin`, `tanh-tustin`, and `sigmoid-tustin`.
 
 Date: 2026-04-14
 

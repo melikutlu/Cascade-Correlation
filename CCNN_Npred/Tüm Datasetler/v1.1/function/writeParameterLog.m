@@ -140,6 +140,9 @@ function logFilePath = writeParameterLog(config, logInfo)
         activationClipping = double(logical(config.model.use_activation_clipping));
     end
     fprintf(fid, 'Activation clipping : %d\n', activationClipping);
+    if isfield(config.model, 'tustin_sample_time')
+        fprintf(fid, 'Tustin sample time : %.6g\n', config.model.tustin_sample_time);
+    end
     fprintf(fid, 'Diff clip lower : %.6g\n', config.model.diff_clip_lower);
     fprintf(fid, 'Diff clip upper : %.6g\n', config.model.diff_clip_upper);
     if isfield(config.model, 'sim_loss_eval_interval')

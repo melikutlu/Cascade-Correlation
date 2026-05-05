@@ -37,9 +37,10 @@ config.regressors.y = [1]; % çıkış gecikmeleri; y(t-1), y(t-2) gibi terimler
 config.regressors.include_bias = false; % sabit bias regressor'ü ekle veya çıkar
 
 % model / training
-% activation options: 'tanh' , 'diff' , 'diff-tanh'
+% activation options: 'tanh', 'sigmoid', 'diff', 'diff-tanh', 'tustin', 'tanh-tustin', 'sigmoid-tustin'
 config.model.activation = 'diff-tanh'; % gizli katman aktivasyon tipi
 config.model.use_activation_clipping = true; % tanh dahil aktivasyon clipping açık/kapalı
+config.model.tustin_sample_time = 1; % tustin için örnekleme süresi
 config.model.diff_clip_lower = -50; % diff aktivasyonunda alt kırpma sınırı
 config.model.diff_clip_upper = 50; % diff aktivasyonunda üst kırpma sınırı
 config.model.hidden_bootstrap_count = 4; % ilk kaç gizli birimi zorunlu eklenir 

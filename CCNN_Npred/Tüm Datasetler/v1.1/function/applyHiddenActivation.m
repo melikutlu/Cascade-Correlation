@@ -13,8 +13,14 @@ function a = applyHiddenActivation(z, z_prev, g, config)
             modeStr = lower(string(config.model.activation));
         end
         switch modeStr
-            case {"tanh","diff-tanh", "diff_tanh"}
+            case {"tanh","diff-tanh", "diff_tanh", "tanh-tustin", "tanh_tustin", ...
+                    "tanh-diff-tustin", "tanh_diff_tustin", "tanh-difftustin", "tanhdifftustin", "tanh-difftustinn", ...
+                    "tanh-diff-tustinn", "tanh_diff_tustinn", "tanhdifftustinn"}
                 g = @(x) tanh(x);
+            case {"sigmoid", "logsig", "sigmoid-tustin", "sigmoid_tustin", ...
+                    "sigmoid-diff-tustin", "sigmoid_diff_tustin", "sigmoid-difftustin", "sigmoiddifftustin", "sigmoid-difftustinn", ...
+                    "sigmoid-diff-tustinn", "sigmoid_diff_tustinn", "sigmoiddifftustinn"}
+                g = @(x) 1 ./ (1 + exp(-x));
         
             otherwise
                 g = @(x) x;
@@ -48,6 +54,15 @@ function a = applyHiddenActivation(z, z_prev, g, config)
         clipEnabled = logical(config.model.use_activation_clipping);
     end
 
+    tustinTs = 1;
+    if isfield(config, 'model') && isfield(config.model, 'tustin_sample_time') && ~isempty(config.model.tustin_sample_time)
+        tustinTs = config.model.tustin_sample_time;
+    end
+    if ~(isfinite(tustinTs) && tustinTs > 0)
+        tustinTs = 1;
+    end
+    tustinGain = 2 / tustinTs;
+
     dzdk = diffByStepOperator(z, z_prev);
 
     switch mode
@@ -69,6 +84,27 @@ function a = applyHiddenActivation(z, z_prev, g, config)
             k = dzdk ./ (abs(z_prev) + epsilon);
 
             a = g(k);
+            if clipEnabled
+                a = max(min(a, clipUpper), clipLower);
+            end
+        case {"tustin", "tustin-only", "diff-tustin", "diff_tustin", "difftustin", "difftustin", "diff-tustinn", "diff_tustinn", "difftustinn"}
+            epsilon = max(1e-2, 0.01 * max(abs(z) + abs(z_prev)));
+            raw = tustinGain * dzdk ./ (abs(z) + abs(z_prev) + epsilon);
+            a = raw;
+            if clipEnabled
+                a = max(min(a, clipUpper), clipLower);
+            end
+        case {"tanh-tustin", "tanh_tustin", "tanh-diff-tustin", "tanh_diff_tustin", "tanh-difftustin", "tanhdifftustin", "tanh-difftustinn"}
+            epsilon = max(1e-2, 0.01 * max(abs(z) + abs(z_prev)));
+            raw = tustinGain * dzdk ./ (abs(z) + abs(z_prev) + epsilon);
+            a = tanh(raw);
+            if clipEnabled
+                a = max(min(a, clipUpper), clipLower);
+            end
+        case {"sigmoid-tustin", "sigmoid_tustin", "sigmoid-diff-tustin", "sigmoid_diff_tustin", "sigmoid-difftustin", "sigmoiddifftustin", "sigmoid-difftustinn"}
+            epsilon = max(1e-2, 0.01 * max(abs(z) + abs(z_prev)));
+            raw = tustinGain * dzdk ./ (abs(z) + abs(z_prev) + epsilon);
+            a = 1 ./ (1 + exp(-raw));
             if clipEnabled
                 a = max(min(a, clipUpper), clipLower);
             end

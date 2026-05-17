@@ -1,0 +1,24 @@
+=====================================
+    NLARX Training Results Log
+=====================================
+Dataset: mrdamper_NoCV
+Timestamp: 2026-05-17 17:10:37
+
+--- Configuration ---
+Activation: sigmoid
+Orders: [1 1 1]
+Max Hidden Units: 20
+
+--- Performance Metrics ---
+Training RMSE: 19.7138
+Validation RMSE: 21.0287
+Training Fit: 66.37%
+Validation Fit: 62.50%
+
+--- Data Information ---
+Training Samples: 1749
+Validation Samples: 1749
+
+--- Additional Details ---
+Notes: Model trained WITHOUT cross-validation
+=====================================

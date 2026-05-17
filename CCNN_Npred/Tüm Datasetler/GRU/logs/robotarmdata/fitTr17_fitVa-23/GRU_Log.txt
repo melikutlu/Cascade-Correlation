@@ -1,0 +1,16 @@
+GRU Baseline Log
+Created      : 2026-05-17 19:02:00
+Data source  : robotarmdata
+Regressors u : [1 2]
+Regressors y : [1 2]
+Hidden units : 64
+Layers       : 1
+Dropout      : 0
+Output activation : linear
+Max epochs   : 300
+Learn rate   : 0.001
+Loss history figure : LossHistory.png
+Train RMSE   : 17.3055
+Val RMSE     : 25.5944
+Train Fit %  : 16.95
+Val Fit %    : -22.97

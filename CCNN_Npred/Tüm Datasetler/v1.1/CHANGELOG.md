@@ -6,6 +6,10 @@ Date: 2026-05-05
 - Added `robotarmdata` dataset support for the MathWorks industrial robot arm example.
 - Added `robotartdata` as an accepted alias for `robotarmdata`.
 - Robot arm loading uses `ue/ye` for training and `uv1/yv1` by default for validation; set `config.data.robotarm.validation_experiment` to 1, 2, or 3 to choose the validation experiment.
+- Added LSTM and GRU baseline scripts under `LSTM/` and `GRU/`, both using the same dataset loader and normalization flow as CCNN.
+- Simplified LSTM/GRU run folder names to `fitTrXX_fitVaYY` and kept their logs focused on layer count and hidden-unit count.
+- Added saved LSTM/GRU training loss figures as `LossHistory.png` in each run folder.
+- Added optional LSTM/GRU `simulation` loss mode that trains with recursive multi-step feedback instead of one-step teacher forcing.
 - Updated `Npred_MiniBatch_Adam_maxCandidate.m` so every accepted hidden stage now records train and validation MSE, RMSE, and fit values.
 - Kept hidden growth decisions on the train-side acceptance logic; only the final model selection now chooses the best validation stage.
 - Added validation-selected final model metadata and per-stage histories to the parameter log output.

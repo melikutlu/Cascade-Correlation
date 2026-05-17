@@ -57,6 +57,8 @@ function logFilePath = writeParameterLog(config, logInfo)
         logInfo.hidden_units, logInfo.max_hidden_units, ...
         logInfo.regressor_count, logInfo.candidate_runs);
     fprintf(fid, '%s\n', summaryLine);
+    fprintf(fid, 'Hidden added : %d\n', logInfo.hidden_units);
+    fprintf(fid, 'Hidden max   : %d\n', logInfo.max_hidden_units);
     fprintf(fid, 'Output plateau epoch : %s\n', formatPlateauValue(logInfo.output_plateau_epoch));
         if isfield(logInfo,'output_stop_by_mavg')
             fprintf(fid, 'Output stopped by moving-avg : %d\n', logInfo.output_stop_by_mavg);

@@ -25,6 +25,13 @@ function config = applyDatasetDefaults(config)
             if ~isfield(config.data, 'mrdamper') || isempty(config.data.mrdamper)
                 config.data.mrdamper = struct();
             end
+        case {"robotarmdata", "robotarm", "robot_arm", "robotarmdataset", "robotartdata"}
+            config.data.source_label = 'robotarmdata';
+            if ~isfield(config.data, 'robotarm') || isempty(config.data.robotarm)
+                config.data.robotarm = struct();
+            end
+            config.data.robotarm = setDefaultField(config.data.robotarm, 'sampling_time', 0.5e-3);
+            config.data.robotarm = setDefaultField(config.data.robotarm, 'validation_experiment', 1);
         otherwise
             error('Unknown data source: %s', config.data.source);
     end
@@ -35,6 +42,8 @@ function config = applyDatasetDefaults(config)
                 config.model.tustin_sample_time = config.data.twotank.sampling_time;
             case {"dryer2", "dryer", "dryerdataset"}
                 config.model.tustin_sample_time = config.data.dryer2.sampling_time;
+            case {"robotarmdata", "robotarm", "robot_arm", "robotarmdataset", "robotartdata"}
+                config.model.tustin_sample_time = config.data.robotarm.sampling_time;
             otherwise
                 config.model.tustin_sample_time = 1;
         end

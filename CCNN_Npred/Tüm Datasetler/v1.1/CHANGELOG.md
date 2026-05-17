@@ -3,6 +3,9 @@
 Date: 2026-05-05
 
 ## Added / Changed
+- Added `robotarmdata` dataset support for the MathWorks industrial robot arm example.
+- Added `robotartdata` as an accepted alias for `robotarmdata`.
+- Robot arm loading uses `ue/ye` for training and `uv1/yv1` by default for validation; set `config.data.robotarm.validation_experiment` to 1, 2, or 3 to choose the validation experiment.
 - Updated `Npred_MiniBatch_Adam_maxCandidate.m` so every accepted hidden stage now records train and validation MSE, RMSE, and fit values.
 - Kept hidden growth decisions on the train-side acceptance logic; only the final model selection now chooses the best validation stage.
 - Added validation-selected final model metadata and per-stage histories to the parameter log output.
@@ -64,6 +67,6 @@ Date: 2026-04-14
 
 ## Notes
 - To select another dataset, change only `config.data.source` in `Npred_MiniBatch_Adam_maxCandidate.m`.
-- Supported dataset names: `twotankdata`, `dryer2`, `mrdamper`.
+- Supported dataset names: `twotankdata`, `dryer2`, `mrdamper`, `robotarmdata`.
 - To make clipping wider, change the config values in `Npred_MiniBatch_Adam_maxCandidate.m`.
 - The new output-layer logic is specific to `v1.0`.

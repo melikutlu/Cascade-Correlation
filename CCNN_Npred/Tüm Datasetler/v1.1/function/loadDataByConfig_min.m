@@ -1,7 +1,8 @@
 function [Utr, Ytr, Uva, Yva] = loadDataByConfig_min(config)
     config = applyDatasetDefaults(config);
+    source = lower(char(config.data.source_label));
 
-    switch lower(config.data.source)
+    switch source
         case 'twotankdata'
             load twotankdata.mat; % must contain u,y
             u = u(:); y = y(:);
@@ -43,6 +44,24 @@ function [Utr, Ytr, Uva, Yva] = loadDataByConfig_min(config)
             Ytr = y(1:Ntr);
             Uva = u(Ntr+1:end);
             Yva = y(Ntr+1:end);
+        case 'robotarmdata'
+            load robotarmdata.mat; % variables: ue, ye, uv1, yv1, uv2, yv2, uv3, yv3
+
+            valExp = config.data.robotarm.validation_experiment;
+            if ischar(valExp) || isstring(valExp)
+                valExp = str2double(valExp);
+            end
+            if ~isscalar(valExp) || isnan(valExp) || ~ismember(valExp, 1:3)
+                error('config.data.robotarm.validation_experiment must be 1, 2, or 3.');
+            end
+
+            valInputs = {uv1, uv2, uv3};
+            valOutputs = {yv1, yv2, yv3};
+
+            Utr = ue(:);
+            Ytr = ye(:);
+            Uva = valInputs{valExp}(:);
+            Yva = valOutputs{valExp}(:);
         otherwise
             error('Unknown data source: %s', config.data.source);
     end

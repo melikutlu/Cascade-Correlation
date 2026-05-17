@@ -82,6 +82,14 @@ function logFilePath = writeParameterLog(config, logInfo)
     if isfield(config.data, 'dryer2') && isfield(config.data.dryer2, 'sampling_time')
         fprintf(fid, 'Dryer2 sampling time   : %.6g\n', config.data.dryer2.sampling_time);
     end
+    if isfield(config.data, 'robotarm')
+        if isfield(config.data.robotarm, 'sampling_time')
+            fprintf(fid, 'Robot arm sampling time : %.6g\n', config.data.robotarm.sampling_time);
+        end
+        if isfield(config.data.robotarm, 'validation_experiment')
+            fprintf(fid, 'Robot arm validation experiment : %d\n', config.data.robotarm.validation_experiment);
+        end
+    end
 
     fprintf(fid, 'N-step horizon : %d\n', logInfo.n_steps);
     fprintf(fid, 'Train obj MSE  : %.6g\n', logInfo.train_mse);

@@ -21,7 +21,7 @@ addpath(funcFolder, '-begin');
 % CONFIG
 % ----------------
 config = struct();
-config.data.source = 'dryer2'; % veri seti adı: twotankdata | dryer2 | mrDamper
+config.data.source = 'robotarmdata'; % veri seti adı: twotankdata | dryer2 | mrDamper | robotarmdata
 
 config.data.train_ratio = 0.5; % eğitim verisi oranı
 config.data.val_ratio = 0.5; % doğrulama verisi oranı

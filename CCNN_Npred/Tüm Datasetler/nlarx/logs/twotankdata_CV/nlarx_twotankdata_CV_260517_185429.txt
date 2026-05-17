@@ -1,0 +1,24 @@
+=====================================
+    NLARX Training Results Log
+=====================================
+Dataset: twotankdata_CV
+Timestamp: 2026-05-17 18:54:29
+
+--- Configuration ---
+Activation: sigmoid
+Orders: [2 2 1]
+Max Hidden Units: 20
+
+--- Performance Metrics ---
+Training RMSE: 0.0247206
+Validation RMSE: 0.0199533
+Training Fit: 85.06%
+Validation Fit: 89.87%
+
+--- Data Information ---
+Training Samples: 1490
+Validation Samples: 1490
+
+--- Additional Details ---
+Notes: Model trained WITH cross-validation (Z-score normalized)
+=====================================

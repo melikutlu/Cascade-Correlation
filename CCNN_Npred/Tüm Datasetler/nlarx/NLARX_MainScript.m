@@ -140,7 +140,7 @@ fprintf('Neural network created.\n');
 % na = output lag order
 % nb = input lag order  
 % nk = dead time (delay)
-orders = [1, 1, 1];  % Typical choice
+orders = [3, 3, 1];  % Typical choice
 fprintf('Regressor orders (na, nb, nk): [%d, %d, %d]\n\n', orders(1), orders(2), orders(3));
 
 % =========================================
@@ -150,7 +150,7 @@ fprintf('--- Training Phase 1: WITH Cross-Validation ---\n');
 
 opt1 = nlarxOptions;
 opt1.SearchOptions.MaxIterations = 0;  % Let algorithm decide iterations
-opt1.NormalizationOptions.NormalizationMethod = 'norm';
+opt1.NormalizationOptions.NormalizationMethod = 'zscore';
 opt1.CrossValidationOptions.HoldoutFraction = 0.1;
 
 fprintf('Training model with cross-validation...\n');
@@ -192,7 +192,7 @@ fprintf('--- Training Phase 2: WITHOUT Cross-Validation ---\n');
 
 opt2 = nlarxOptions;
 opt2.SearchOptions.MaxIterations = 0;
-opt2.NormalizationOptions.NormalizationMethod = 'norm';
+opt2.NormalizationOptions.NormalizationMethod = 'zscore';
 opt2.CrossValidate = false;  % Disable cross-validation
 
 fprintf('Training model without cross-validation...\n');

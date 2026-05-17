@@ -2,7 +2,7 @@
 SYSTEM IDENTIFICATION RUN LOG
 ============================================
 
-Timestamp           : 2026-04-21_13-21-28
+Timestamp           : 2026-05-05_16-32-55
 Dataset             : mrdamper
 Model type          : ss
 Mode                : simulation
@@ -52,5 +52,5 @@ IDENTIFIED MODEL SUMMARY
 --------------------------------------------
 SAVED FIGURES
 --------------------------------------------
-log/mrdamper_ss_simulation_2026-04-21_13-21-28/output_comparison.png
-log/mrdamper_ss_simulation_2026-04-21_13-21-28/error_signal.png
+log/mrdamper_ss_simulation_2026-05-05_16-32-55/output_comparison.png
+log/mrdamper_ss_simulation_2026-05-05_16-32-55/error_signal.png

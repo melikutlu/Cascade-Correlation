@@ -1,7 +1,7 @@
 clear; clc; close all;
 
 %% ===================== CONFIG =====================
-config.data.source = 'twotankdata';   % 'twotankdata', 'dryer2', 'mrdamper'
+config.data.source = 'dryer2';   % 'twotankdata', 'dryer2', 'mrdamper'
 config.data.train_ratio = 0.7;
 config.data.val_ratio   = 0.3;
 
@@ -16,11 +16,11 @@ config.data.dryer2.sampling_time   = 0.08;
 % mrdamper defaults
 config.data.mrdamper.sampling_time = 0.01;   % change if needed
 
-config.modelType = 'ss';           % 'tf' or 'ss'
+config.modelType = 'tf';           % 'tf' or 'ss'
 config.mode      = 'simulation';      % 'predict' or 'simulation'
 
-config.tf_num_order = 4;          % numerator order
-config.tf_den_order = 4;          % denominator order
+config.tf_num_order = 10;          % numerator order
+config.tf_den_order = 10;          % denominator order
 config.tf_io_delay  = 0;           % input delay
 
 config.ss_order = 4;

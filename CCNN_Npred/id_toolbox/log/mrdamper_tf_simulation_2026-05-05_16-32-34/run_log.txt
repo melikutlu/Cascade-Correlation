@@ -2,34 +2,34 @@
 SYSTEM IDENTIFICATION RUN LOG
 ============================================
 
-Timestamp           : 2026-04-21_13-10-32
-Dataset             : twotankdata
+Timestamp           : 2026-05-05_16-32-34
+Dataset             : mrdamper
 Model type          : tf
-Mode                : predict
-Sampling time       : 0.200000
-Train samples       : 2086
-Validation samples  : 894
+Mode                : simulation
+Sampling time       : 0.010000
+Train samples       : 2449
+Validation samples  : 1050
 
 TF numerator order  : 4
 TF denominator order: 4
 TF input delay      : 0
 
-RMSE                : 0.0611113394
-MSE                 : 0.0037345958
-MAE                 : 0.0535257183
-Fit (%)             : 70.3270029633
+RMSE                : 30.9798975230
+MSE                 : 959.7540505336
+MAE                 : 25.7588428129
+Fit (%)             : 46.1773797649
 
 --------------------------------------------
 IDENTIFIED MODEL SUMMARY
 --------------------------------------------
   <a href="matlab:helpPopup('idtf')" style="font-weight:bold">idtf</a> with properties:
 
-        Numerator: [-0.0072 0.0084 -2.4005e-05 2.1600e-04 1.4279e-06]
-      Denominator: [1 0.1327 0.0282 0.0031 3.6328e-05]
+        Numerator: [-2.0359 -365.4068 -379.2199 -1.0641e+03 -384.0995]
+      Denominator: [1 46.4963 4.1984 187.4684 0.0233]
          Variable: 's'
           IODelay: 0
         Structure: [1×1 pmodel.tf]
-    NoiseVariance: 1.9512e-04
+    NoiseVariance: 5.5568
        InputDelay: 0
       OutputDelay: 0
         InputName: {'u1'}
@@ -51,5 +51,5 @@ IDENTIFIED MODEL SUMMARY
 --------------------------------------------
 SAVED FIGURES
 --------------------------------------------
-log/twotankdata_tf_predict_2026-04-21_13-10-32/output_comparison.png
-log/twotankdata_tf_predict_2026-04-21_13-10-32/error_signal.png
+log/mrdamper_tf_simulation_2026-05-05_16-32-34/output_comparison.png
+log/mrdamper_tf_simulation_2026-05-05_16-32-34/error_signal.png

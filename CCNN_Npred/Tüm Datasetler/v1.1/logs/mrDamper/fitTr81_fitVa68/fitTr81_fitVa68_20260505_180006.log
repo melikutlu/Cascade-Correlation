@@ -1,0 +1,54 @@
+Data source : mrDamper
+CCNN Parameter Log
+Created      : 2026-05-05 18:00:06
+Script       : writeParameterLog.m
+Run folder   : fitTr81_fitVa68
+
+eta_out=0.0050 | eta_cand=0.0030 | output_epochs=60/20 | hidden=4/15 | regressors=2 | cand_runs=7
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [21 300 300 300 300 300 300]
+Candidate plateau epochs      : [21 NaN NaN NaN NaN NaN NaN]
+Data source   : mrDamper
+N-step horizon : 20
+Train obj MSE  : 0.0379583
+Val   obj MSE  : 0.0920713
+Train series RMSE : 11.4248
+Val   RMSE      : 17.7933
+Train Fit (%)   : 80.51
+Val   Fit (%)   : 68.27
+
+Hidden units per stage : [0 1 2 3 4 5 6]
+Train obj MSE history  : [0.233801046720253 0.232526325536651 0.0764773726442668 0.0657538444112995 0.0379583292243588 0.0364156179297686 0.0386642375123903]
+Val   obj MSE history  : [0.260585173340348 0.26047287931591 0.112154461473435 0.132071706369232 0.0920712628453028 0.11060282913385 0.097431477610137]
+Train RMSE history     : [28.3541406752609 28.2767393456845 16.2165977366838 15.0367451440391 11.4247527041576 11.1901808660303 11.5304959913535]
+Val   RMSE history     : [29.9342316401834 29.927781162763 19.6381937898738 21.3107217506839 17.7932513672983 19.5018756160192 18.3038694098506]
+Train Fit history (%)  : [51.6279579850631 51.7600043203466 72.3345540236167 74.3473774710449 80.509421035004 80.9095995817415 80.3290234419464]
+Val   Fit history (%)  : [46.6113341981175 46.6228388322566 64.9746491641116 61.9916417023757 68.2651633689383 65.2177770156671 67.3544596517385]
+Best validation stage  : #5 (hidden=4)
+Best validation metric : validation fit = 68.2652
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.233801046720253 0.232526325536651 0.0764773726442668 0.0657538444112995 0.0379583292243588]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : tanh
+Activation clipping : 1
+Tustin sample time : 1
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

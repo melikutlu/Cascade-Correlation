@@ -1,0 +1,58 @@
+Data source : twotankdata
+CCNN Parameter Log
+Created      : 2026-05-05 17:11:21
+Script       : writeParameterLog.m
+Run folder   : fitTr78_fitVa71
+
+eta_out=0.0050 | eta_cand=0.0030 | output_epochs=100/20 | hidden=1/15 | regressors=2 | cand_runs=4
+Output plateau epoch : 100
+Candidate epochs (per unit)  : [21 23 49 26]
+Candidate plateau epochs      : [21 23 49 26]
+Data source   : twotankdata
+Twotank sampling time : 0.2
+Twotank warmup samples : 20
+Twotank filter cutoff  : 0.066902
+N-step horizon : 20
+Train obj MSE  : 0.0466629
+Val   obj MSE  : 0.116472
+Train series RMSE : 0.0357485
+Val   RMSE      : 0.0564785
+Train Fit (%)   : 78.40
+Val   Fit (%)   : 71.32
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.0510517768750713 0.046662931004575 0.0776101691442648 0.0629316295912941 0.0527961790892891]
+Val   obj MSE history  : [0.131579668798266 0.116472058362807 0.189539494335862 0.149422570571959 0.125365447660878]
+Train RMSE history     : [0.0373918989859729 0.0357485225651986 0.0461032355570674 0.041515146945061 0.0380253602526791]
+Val   RMSE history     : [0.0600297431338593 0.0564784755556626 0.0720480032822434 0.0639705658550437 0.0585950620479668]
+Train Fit history (%)  : [77.4036583966 78.3967690968808 72.1393005458129 74.9119336667586 77.0208506878932]
+Val   Fit history (%)  : [69.5165641589326 71.3199174921799 63.4136251318975 67.5153925678037 70.2451031556209]
+Best validation stage  : #2 (hidden=1)
+Best validation metric : validation fit = 71.3199
+Hidden growth reverted to baseline during search.
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.0510517768750713 0.046662931004575]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff-tanh
+Activation clipping : 1
+Tustin sample time : 0.2
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

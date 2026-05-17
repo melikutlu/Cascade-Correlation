@@ -1,0 +1,56 @@
+Data source : twotankdata
+CCNN Parameter Log
+Created      : 2026-05-05 17:27:09
+Script       : writeParameterLog.m
+Run folder   : fitTr80_fitVa77
+
+eta_out=0.0050 | eta_cand=0.0030 | output_epochs=80/20 | hidden=4/15 | regressors=2 | cand_runs=5
+Output plateau epoch : 80
+Candidate epochs (per unit)  : [30 26 27 23 22]
+Candidate plateau epochs      : [30 26 27 23 22]
+Data source   : twotankdata
+Twotank sampling time : 0.2
+Twotank warmup samples : 20
+Twotank filter cutoff  : 0.066902
+N-step horizon : 20
+Train obj MSE  : 0.0415985
+Val   obj MSE  : 0.0763878
+Train series RMSE : 0.0337529
+Val   RMSE      : 0.0457387
+Train Fit (%)   : 79.60
+Val   Fit (%)   : 76.77
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.0510517768750713 0.0564525728828133 0.0490726447648926 0.0424366489224354 0.0415984501322614]
+Val   obj MSE history  : [0.131579668798266 0.137711230422689 0.115416821129232 0.101112049750624 0.0763878300486067]
+Train RMSE history     : [0.0373918989859729 0.0393200408756072 0.0366599461770183 0.0340912269214022 0.0337528668052694]
+Val   RMSE history     : [0.0600297431338593 0.061412498975457 0.0562220458330268 0.0526227509454509 0.0457387379542798]
+Train Fit history (%)  : [77.4036583966 76.2384607473887 77.8459856428014 79.3982913388803 79.6027661309194]
+Val   Fit history (%)  : [69.5165641589326 68.8143930887148 71.4501339247287 73.2778757915203 76.7736156929472]
+Best validation stage  : #5 (hidden=4)
+Best validation metric : validation fit = 76.7736
+MSE history (final selected prefix): [0.0510517768750713 0.0564525728828133 0.0490726447648926 0.0424366489224354 0.0415984501322614]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff
+Activation clipping : 1
+Tustin sample time : 0.2
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

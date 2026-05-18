@@ -40,8 +40,13 @@ config.regressors.include_bias = false;
 % model / training
 % activation options: 'tanh' (default), 'diff' (time diff of z), 'diff-tanh' (time diff then tanh)
 config.model.activation = 'diff';
+<<<<<<<< HEAD:CCNN_Npred/mrDamper/v0.7/Npred_MiniBatch_Adam_maxCandidate.m
 config.model.max_hidden_units = 5;
 config.model.force_hidden_growth = false; % true: always add up to max_hidden_units
+========
+config.model.max_hidden_units = 10;
+config.model.force_hidden_growth = true; % true: always add up to max_hidden_units
+>>>>>>>> 86396cb (son):CCNN_Npred/mrDamper/Copy_of_v0.6/Npred_MiniBatch_Adam_maxCandidate.m
 config.model.target_mse = 5e-4;  % true MSE — adjust if needed
 config.model.min_mse_improvement = 1e-4; % early stop threshold
 
@@ -49,20 +54,25 @@ config.model.min_mse_improvement = 1e-4; % early stop threshold
 % Adam typically saturates within -300 epochs; plateau guard stops early.
 config.model.max_epochs_output = 100;
 config.model.eta_output = 0.005;
+<<<<<<<< HEAD:CCNN_Npred/mrDamper/v0.7/Npred_MiniBatch_Adam_maxCandidate.m
 config.model.max_epochs_candidate = 300;
 config.model.eta_candidate = 0.003;
+========
+config.model.max_epochs_candidate = 100;
+config.model.eta_candidate = 0.03;
+>>>>>>>> 86396cb (son):CCNN_Npred/mrDamper/Copy_of_v0.6/Npred_MiniBatch_Adam_maxCandidate.m
 config.model.plateau_min_delta = 0;   % stop if improvement over prev-window mean is <= this
 
 % Moving-average plateau stop: after each epoch, compare current loss/metric
 % against the mean of the previous `moving_avg_window` epochs.
 % If improvement <= plateau_min_delta, training stops (plateau detected).
 config.model.moving_avg_window = 20;      % number of previous epochs to average
-config.model.use_plateau_stop = true;
+config.model.use_plateau_stop = false;
 
 config.training = struct();
 config.training.batch_size_output = 32;     % mini-batch size for output layer updates
 config.training.batch_size_candidate = 32;  % mini-batch size for candidate unit search
-config.training.candidate_pool_size = 1;    % train this many candidates, pick best scored
+config.training.candidate_pool_size = 0;    % train this many candidates, pick best scored
 config.training.use_parfor_pool = false ;     % true: train candidate pool with parfor (if available)
 
 % load raw data according to config, then normalize
@@ -71,8 +81,13 @@ config.training.use_parfor_pool = false ;     % true: train candidate pool with 
 
 if isfield(config.prediction, 'auto_full_horizon') && config.prediction.auto_full_horizon
     maxLag = getMaxLagFromRegressors(config.regressors);
+<<<<<<<< HEAD:CCNN_Npred/mrDamper/v0.7/Npred_MiniBatch_Adam_maxCandidate.m
     maxStepsTr = numel(Ytr) - maxLag;
     maxStepsVa = numel(Yva) - maxLag;
+========
+    maxStepsTr = numel(Ytr) - maxLag -1;
+    maxStepsVa = numel(Yva) - maxLag - 1;
+>>>>>>>> 86396cb (son):CCNN_Npred/mrDamper/Copy_of_v0.6/Npred_MiniBatch_Adam_maxCandidate.m
     autoSteps = min([maxStepsTr, maxStepsVa]);
     if autoSteps < 1
         error('Not enough samples to build at least one full-horizon trajectory.');
@@ -193,6 +208,17 @@ while numel(W_hidden) < config.model.max_hidden_units
     % tentatively add candidate
     w_o_prev = w_o;
     W_hidden{end+1} = w_h;
+
+    %%%%log atıyorum 
+
+    h_test = forwardHiddenSingle(X0_tr(1,:,:), W_hidden, config.model.activation);
+
+fprintf('New hidden stats → mean=%.3e | std=%.3e | max=%.3e\n', ...
+    mean(extractdata(h_test),'all'), ...
+    std(extractdata(h_test),0,'all'), ...
+    max(extractdata(h_test),[],'all'));
+
+
     % Warm-start: mevcut output agirliklarini aynen koru,
     % sadece yeni candidate icin bir cikis agirligi ekle.
     w_o = [w_o_prev; dlarray(0)];

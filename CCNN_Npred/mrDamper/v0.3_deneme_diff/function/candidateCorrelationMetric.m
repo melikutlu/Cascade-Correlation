@@ -1,6 +1,6 @@
 function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, config)
     % compute current model N-step output without candidate
-    Y_model = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
+    Y_mod0 eel = forwardModelTrajectory(X0, U, W_hidden, g, w_o, config);
     R = T - Y_model; % residual (M x N)
 
     % compute candidate activation v (M x N) using the same recursive
@@ -13,8 +13,9 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
     N = size(U,2);
     v = dlarray(zeros(M,N));
 
-    % Bu surumde diferansiyel aktivasyon sabit 1. derecedir.
-    nWarmupSteps = 2;
+    % Diferansiyel derecesine göre warm-up adım sayısını al
+    diffOrder = getDiffOrder(config);
+    nWarmupSteps = diffOrder + 1;
 
     % Full y-history buffer: yhist(:,L) = y(t0-L), works for any lag combination
     % En son warm-up adımından (w=nWarmupSteps) y history'yi initle
@@ -24,37 +25,12 @@ function metric = candidateCorrelationMetric(w_h, X0, U, T, W_hidden, w_o, g, co
         yhist(:, ylags(j)) = X0(:, nWarmupSteps, nu+j);
     end
 
-    % hidden ve candidate icin bir onceki pre-activation durumlari
+    % track previous pre-activation per hidden and candidate for diff modes
     z_prev_hidden = cell(numel(W_hidden),1);
     for h=1:numel(W_hidden)
         z_prev_hidden{h} = dlarray(zeros(M,1));
     end
     z_prev_cand = dlarray(zeros(M,1));
-
-    % Warm-up: z_prev degerlerini X0'daki gercek gecmisten doldur.
-    if nWarmupSteps > 1
-        for w = 1:nWarmupSteps
-            x_warmup = reshape(X0(:, w, 1:nu+ny), M, nu+ny);
-            x_warmup = dlarray(x_warmup);
-
-            if w > 1
-                for j = 1:ny
-                    yhist(:, ylags(j)) = X0(:, w, nu+j);
-                end
-            end
-
-            x_tmp = x_warmup;
-            for h = 1:numel(W_hidden)
-                z_h = x_tmp * W_hidden{h};
-                a_h = applyHiddenActivation(z_h, z_prev_hidden{h}, g, config);
-                z_prev_hidden{h} = z_h;
-                x_tmp = [x_tmp, a_h];
-            end
-
-            z_c = x_tmp * w_h;
-            z_prev_cand = z_c;
-        end
-    end
 
     for t=1:N
         % u part

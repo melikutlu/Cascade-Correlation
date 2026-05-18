@@ -21,7 +21,7 @@ addpath(funcFolder, '-begin');
 % CONFIG
 % ----------------
 config = struct();
-config.data.source = 'robotarmdata'; % veri seti adı: twotankdata | dryer2 | mrDamper | robotarmdata
+config.data.source = 'mrDamper'; % veri seti adı: twotankdata | dryer2 | mrDamper | robotarmdata
 
 config.data.train_ratio = 0.5; % eğitim verisi oranı
 config.data.val_ratio = 0.5; % doğrulama verisi oranı
@@ -32,13 +32,13 @@ config.prediction.n_steps = 20; % tahmin ufku; otomatik mod kapalıysa bu değer
 config.prediction.auto_full_horizon = false; % true ise kullanılabilir tüm veri uzunluğunu hedefle
 
 % regressors (user can change)
-config.regressors.u = [1]; % giriş gecikmeleri; u(t), u(t-1) gibi terimleri seçer
-config.regressors.y = [1]; % çıkış gecikmeleri; y(t-1), y(t-2) gibi terimleri seçer
+config.regressors.u = [1 2 3]; % giriş gecikmeleri; u(t), u(t-1) gibi terimleri seçer
+config.regressors.y = [1 2 3]; % çıkış gecikmeleri; y(t-1), y(t-2) gibi terimleri seçer
 config.regressors.include_bias = false; % sabit bias regressor'ü ekle veya çıkar
 
 % model / training
 % activation options: 'tanh', 'sigmoid', 'diff', 'diff-tanh', 'tustin', 'tanh-tustin', 'sigmoid-tustin'
-config.model.activation = 'tanh'; % gizli katman aktivasyon tipi
+config.model.activation = 'diff'; % gizli katman aktivasyon tipi
 config.model.use_activation_clipping = true; % aktivasyon clipping açık/kapalı
 config.model.tustin_sample_time = []; % boşsa dataset sampling_time kullanılır; yoksa 1'e düşer
 config.model.diff_clip_lower = -50; % diff aktivasyonunda alt kırpma sınırı
@@ -65,8 +65,8 @@ config.model.moving_avg_window = 20;      % plato kontrolünde kaç önceki epoc
 config.model.use_plateau_stop = true; % aday eğitiminde plato durdurma açık, output katmanında blok tabanlı mantık kullanılır
 
 config.training = struct();
-config.training.batch_size_output = 32;     % output katmanı güncellemesinde mini-batch boyutu
-config.training.batch_size_candidate = 32;  % aday birim aramasında mini-batch boyutu
+config.training.batch_size_output = 256;     % output katmanı güncellemesinde mini-batch boyutu
+config.training.batch_size_candidate = 256;  % aday birim aramasında mini-batch boyutu
 config.training.candidate_pool_size = 1;    % aynı anda eğitilecek aday sayısı
 config.training.use_parfor_pool = false ;     % true ise aday havuzunu paralel eğitir (varsa)
 

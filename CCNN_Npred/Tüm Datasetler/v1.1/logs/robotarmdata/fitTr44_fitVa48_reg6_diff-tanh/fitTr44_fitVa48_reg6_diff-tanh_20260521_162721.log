@@ -1,0 +1,60 @@
+Data source : robotarmdata
+CCNN Parameter Log
+Created      : 2026-05-21 16:27:21
+Script       : writeParameterLog.m
+Run folder   : fitTr44_fitVa48_reg6_diff-tanh
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=80/20 | hidden=0/15 | regressors=6 | cand_runs=5
+Hidden added : 0
+Hidden max   : 15
+Output plateau epoch : 80
+Candidate epochs (per unit)  : [141 169 97 178 146]
+Candidate plateau epochs      : [141 169 97 178 146]
+Data source   : robotarmdata
+Robot arm original sampling time : 0.0005
+Robot arm sampling time : 0.005
+Robot arm downsample factor : 10
+Robot arm validation experiment : 3
+N-step horizon : 20
+Train obj MSE  : 0.31522
+Val   obj MSE  : 0.342274
+Train series RMSE : 11.6913
+Val   RMSE      : 12.1827
+Train Fit (%)   : 43.86
+Val   Fit (%)   : 48.18
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.315219722458853 0.306632888919936 0.308028916703989 0.250918910882255 0.216029416772491]
+Val   obj MSE history  : [0.342273761712662 0.444013666690201 0.662371006657218 0.75086309448422 0.956279866882937]
+Train RMSE history     : [11.6913065238717 11.5309668401606 11.5571859284615 10.4309305245358 9.67860581382148]
+Val   RMSE history     : [12.1826890610189 13.8756879616852 16.947553477808 18.0441627404003 20.3633329430715]
+Train Fit history (%)  : [43.8555681028017 44.6255573622703 44.499647070336 49.9081931293624 53.5210351499728]
+Val   Fit history (%)  : [48.1811112359201 40.979965308947 27.9138305105543 23.2494191387039 13.3848627870426]
+Best validation stage  : #1 (hidden=0)
+Best validation metric : validation fit = 48.1811
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): 0.315219722458853
+Regressors.u : [1 2 3]
+Regressors.y : [1 2 3]
+Norm method  : zscore
+Activation   : diff-tanh
+Activation clipping : 1
+Tustin sample time : 0.005
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg6_diff-tanh.png
+ - Val_reg6_diff-tanh.png
+ - LossFinal_reg6_diff-tanh.png
+ - LossBeforeRevert_reg6_diff-tanh.png
+ - CandidateCorr_reg6_diff-tanh.png
+ - LossHistory_reg6_diff-tanh.png

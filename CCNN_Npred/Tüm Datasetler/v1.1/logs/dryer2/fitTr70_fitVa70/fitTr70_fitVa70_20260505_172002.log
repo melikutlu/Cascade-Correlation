@@ -1,0 +1,54 @@
+Data source : dryer2
+CCNN Parameter Log
+Created      : 2026-05-05 17:20:02
+Script       : writeParameterLog.m
+Run folder   : fitTr70_fitVa70
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=80/20 | hidden=4/15 | regressors=2 | cand_runs=5
+Output plateau epoch : 80
+Candidate epochs (per unit)  : [300 57 96 79 147]
+Candidate plateau epochs      : [NaN 57 96 79 147]
+Data source   : dryer2
+Dryer2 sampling time   : 0.08
+N-step horizon : 20
+Train obj MSE  : 0.0928003
+Val   obj MSE  : 0.0882753
+Train series RMSE : 0.255312
+Val   RMSE      : 0.249009
+Train Fit (%)   : 69.54
+Val   Fit (%)   : 69.60
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.372850500732924 0.123143245832916 0.114747349416876 0.116635705735512 0.0928003079397373]
+Val   obj MSE history  : [0.385372380087845 0.21141404507796 0.155579041116481 0.158140808865722 0.0882753076095351]
+Train RMSE history     : [0.511756473149576 0.294104234620323 0.28390125384596 0.286227752296415 0.25531168275028]
+Val   RMSE history     : [0.520278970233363 0.385356684959799 0.330576155465875 0.333286680083794 0.249009318201515]
+Train Fit history (%)  : [38.9379933635271 64.9079285393776 66.1253327393122 65.8477384707979 69.5365970253002]
+Val   Fit history (%)  : [36.4918143774854 52.9611895166036 59.6480099238157 59.3171480008517 69.6045181395965]
+Best validation stage  : #5 (hidden=4)
+Best validation metric : validation fit = 69.6045
+MSE history (final selected prefix): [0.372850500732924 0.123143245832916 0.114747349416876 0.116635705735512 0.0928003079397373]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff-tanh
+Activation clipping : 1
+Tustin sample time : 0.08
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

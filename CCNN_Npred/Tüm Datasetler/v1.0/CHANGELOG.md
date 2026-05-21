@@ -31,6 +31,12 @@ Date: 2026-04-14
 - Removed the post-hidden NaN/Inf and finite-MSE growth stops from the hidden acceptance block.
 - Parameter logs now include the resolved data source and dataset-specific defaults where available.
 - Parameter logs now include the diff clipping bounds used during the run.
+- Parameter logs now include the hidden-growth controls used during the run:
+  - `config.model.hidden_bootstrap_count`
+  - `config.model.hidden_acceptance_window`
+- Loss visualizations now keep two hidden-unit histories:
+  - the final accepted model
+  - the pre-revert state, if growth is reverted back to the baseline
 - Kept candidate training on the existing plateau / moving-average logic.
 
 ## Default Values

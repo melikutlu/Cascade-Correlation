@@ -368,12 +368,12 @@ end
 figTrain = figure('Name','TRAIN - Full Recursive','Color','w');
 plot(Ytr_raw(2:end),'k','LineWidth',1.4); hold on;
 plot(Yhat_tr,'b--','LineWidth',1.2); grid on;
-title(sprintf('TRAIN | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_tr)); legend('True','CCNN');
+title(sprintf('TRAIN | Regressors=%d | Hidden=%d | Fit=%.2f%%', logInfo.regressor_count, numel(W_hidden), fit_tr)); legend('True','CCNN');
 
 figVal = figure('Name','VAL - Full Recursive','Color','w');
 plot(Yva_raw(2:end),'k','LineWidth',1.4); hold on;
 plot(Yhat_va,'r--','LineWidth',1.2); grid on;
-title(sprintf('VAL | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_va)); legend('True','CCNN');
+title(sprintf('VAL | Regressors=%d | Hidden=%d | Fit=%.2f%%', logInfo.regressor_count, numel(W_hidden), fit_va)); legend('True','CCNN');
 
 % also save the loss-vs-units figure into the run folder so it's available visually
 % include the output loss-history figure (if present) when saving run figures
@@ -381,7 +381,7 @@ figMap = struct('train', figTrain, 'val', figVal, 'loss', lossFigHandle, 'candid
 if exist('lossHistoryFig','var') && ~isempty(lossHistoryFig) && ishandle(lossHistoryFig)
     figMap.loss_history = lossHistoryFig;
 end
-savedFigurePaths = saveFitFigures(logFilePath, figMap);
+savedFigurePaths = saveFitFigures(logFilePath, figMap, logInfo.activation, logInfo.regressor_count);
 if ~isempty(savedFigurePaths) && ~isempty(logFilePath)
     appendFigureInfoToLog(logFilePath, savedFigurePaths);
 end

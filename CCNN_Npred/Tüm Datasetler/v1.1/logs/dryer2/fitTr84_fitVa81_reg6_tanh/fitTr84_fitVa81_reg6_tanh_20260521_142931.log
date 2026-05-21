@@ -1,0 +1,58 @@
+Data source : dryer2
+CCNN Parameter Log
+Created      : 2026-05-21 14:29:31
+Script       : writeParameterLog.m
+Run folder   : fitTr84_fitVa81_reg6_tanh
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=80/20 | hidden=0/15 | regressors=6 | cand_runs=4
+Hidden added : 0
+Hidden max   : 15
+Output plateau epoch : 80
+Candidate epochs (per unit)  : [29 21 26 29]
+Candidate plateau epochs      : [29 21 26 29]
+Data source   : dryer2
+Dryer2 sampling time   : 0.08
+N-step horizon : 20
+Train obj MSE  : 0.0267402
+Val   obj MSE  : 0.0354416
+Train series RMSE : 0.13705
+Val   RMSE      : 0.15778
+Train Fit (%)   : 83.65
+Val   Fit (%)   : 80.74
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.0267401764593982 0.0391722187188417 0.0419245838672802 0.0412444418747728 0.0416188691937504]
+Val   obj MSE history  : [0.0354416478909573 0.0467892807642034 0.0494529375560849 0.0487295230430096 0.0489645854697125]
+Train RMSE history     : [0.13704970775995 0.165876576991752 0.171605166777502 0.170207500797006 0.170978348312067]
+Val   RMSE history     : [0.157780356379134 0.18128804435786 0.186376875384198 0.185008660879829 0.185454348246713]
+Train Fit history (%)  : [83.647436615191 80.2078582753064 79.5243316256828 79.6910990118409 79.5991226548235]
+Val   Fit history (%)  : [80.7404397759569 77.8709587914778 77.2497873740027 77.4167993535103 77.3623962397097]
+Best validation stage  : #1 (hidden=0)
+Best validation metric : validation fit = 80.7404
+Hidden growth reverted to baseline during search.
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): 0.0267401764593982
+Regressors.u : [1 2 3]
+Regressors.y : [1 2 3]
+Norm method  : zscore
+Activation   : tanh
+Activation clipping : 1
+Tustin sample time : 0.08
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg6_tanh.png
+ - Val_reg6_tanh.png
+ - LossFinal_reg6_tanh.png
+ - LossBeforeRevert_reg6_tanh.png
+ - CandidateCorr_reg6_tanh.png
+ - LossHistory_reg6_tanh.png

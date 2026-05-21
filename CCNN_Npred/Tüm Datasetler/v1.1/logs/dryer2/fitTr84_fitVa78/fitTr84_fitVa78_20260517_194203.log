@@ -1,0 +1,54 @@
+Data source : dryer2
+CCNN Parameter Log
+Created      : 2026-05-17 19:42:03
+Script       : writeParameterLog.m
+Run folder   : fitTr84_fitVa78
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=80/20 | hidden=7/15 | regressors=4 | cand_runs=8
+Output plateau epoch : 80
+Candidate epochs (per unit)  : [225 247 99 47 300 91 66 58]
+Candidate plateau epochs      : [225 247 99 47 NaN 91 66 58]
+Data source   : dryer2
+Dryer2 sampling time   : 0.08
+N-step horizon : 20
+Train obj MSE  : 0.0257827
+Val   obj MSE  : 0.045839
+Train series RMSE : 0.134574
+Val   RMSE      : 0.179438
+Train Fit (%)   : 83.94
+Val   Fit (%)   : 78.10
+
+Hidden units per stage : [0 1 2 3 4 5 6 7]
+Train obj MSE history  : [0.286530164912213 0.199126233319927 0.0620166966030073 0.0434499759459728 0.0341813737946162 0.0317627787668861 0.028051192887241 0.0257827155072031]
+Val   obj MSE history  : [0.294289315876133 0.206522668943869 0.0760907904306583 0.0610915974651175 0.0607177221461049 0.0560245696750981 0.0458406763476177 0.045839025153475]
+Train RMSE history     : [0.448622606450249 0.373990197049625 0.208713381303762 0.174699132954537 0.154949698730195 0.149367194604327 0.140369142425143 0.134573735470644]
+Val   RMSE history     : [0.454656314396508 0.380872699288015 0.231186264200954 0.2071508502162 0.206516004737566 0.198374225452227 0.179440920210366 0.179437688424884]
+Train Fit history (%)  : [46.471030637398 55.3760565964637 75.0966357184385 79.1551642713894 81.5116368261018 82.1777327562304 83.2513667026642 83.942865875579]
+Val   Fit history (%)  : [44.5020858786766 53.5085300986083 71.780100637809 74.7139988351032 74.7914916549276 75.7853231563601 78.0964291832068 78.0968236731708]
+Best validation stage  : #8 (hidden=7)
+Best validation metric : validation fit = 78.0968
+MSE history (final selected prefix): [0.286530164912213 0.199126233319927 0.0620166966030073 0.0434499759459728 0.0341813737946162 0.0317627787668861 0.028051192887241 0.0257827155072031]
+Regressors.u : [1 2]
+Regressors.y : [1 2]
+Norm method  : zscore
+Activation   : diff
+Activation clipping : 1
+Tustin sample time : 0.08
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

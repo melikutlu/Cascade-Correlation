@@ -1,0 +1,56 @@
+Data source : mrDamper
+CCNN Parameter Log
+Created      : 2026-05-18 17:59:25
+Script       : writeParameterLog.m
+Run folder   : fitTr52_fitVa49
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=3/15 | regressors=6 | cand_runs=5
+Hidden added : 3
+Hidden max   : 15
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [300 34 300 27 25]
+Candidate plateau epochs      : [NaN 34 NaN 27 25]
+Data source   : mrDamper
+N-step horizon : 20
+Train obj MSE  : 0.226705
+Val   obj MSE  : 0.239123
+Train series RMSE : 27.9205
+Val   RMSE      : 28.675
+Train Fit (%)   : 52.37
+Val   Fit (%)   : 48.86
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.23436876961166 0.239668925470711 0.227295258205916 0.226704532803121 0.225846194782335]
+Val   obj MSE history  : [0.257518114307826 0.256654782307264 0.240029054615058 0.239122680407668 0.239810885045826]
+Train RMSE history     : [28.3885450006756 28.7077482143653 27.9568638837932 27.9205112251105 27.8676054382162]
+Val   RMSE history     : [29.7575488985352 29.707625784399 28.7293084062234 28.6750147027893 28.716248975234]
+Train Fit history (%)  : [51.56926435391 51.02470504454 52.3057104822566 52.3677279615834 52.457985006429]
+Val   Fit history (%)  : [46.926453555788 47.015493037023 48.7603535759344 48.8571881438843 48.7836454915258]
+Best validation stage  : #4 (hidden=3)
+Best validation metric : validation fit = 48.8572
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.23436876961166 0.239668925470711 0.227295258205916 0.226704532803121]
+Regressors.u : [1 2 3]
+Regressors.y : [1 2 3]
+Norm method  : zscore
+Activation   : tustin
+Activation clipping : 1
+Tustin sample time : 1
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

@@ -1,0 +1,57 @@
+Data source : robotarmdata
+CCNN Parameter Log
+Created      : 2026-05-17 20:21:20
+Script       : writeParameterLog.m
+Run folder   : fitTr32_fitVa32
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=0/15 | regressors=2 | cand_runs=4
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [28 47 52 36]
+Candidate plateau epochs      : [28 47 52 36]
+Data source   : robotarmdata
+Robot arm sampling time : 0.0005
+Robot arm validation experiment : 1
+N-step horizon : 20
+Train obj MSE  : 0.462917
+Val   obj MSE  : 0.460766
+Train series RMSE : 14.1784
+Val   RMSE      : 14.1455
+Train Fit (%)   : 31.96
+Val   Fit (%)   : 32.03
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.462917018877826 0.494979084946387 0.554704424415918 0.610464664904027 0.552935674667566]
+Val   obj MSE history  : [0.460766403672274 0.49137074148136 0.548117432259188 0.605866367173025 0.556072630429635]
+Train RMSE history     : [14.1784485552627 14.6612352426633 15.5205802206709 16.2819869921783 15.4958157337417]
+Val   RMSE history     : [14.1454751673544 14.6076980924284 15.4281532879588 16.2205494108535 15.5397095730543]
+Train Fit history (%)  : [31.9606208168299 29.6438295007276 25.5200145022161 21.8661842656212 25.6388540430792]
+Val   Fit history (%)  : [32.0343184221737 29.8134459684823 25.8713517009823 22.0640746788251 25.3353499858684]
+Best validation stage  : #1 (hidden=0)
+Best validation metric : validation fit = 32.0343
+Hidden growth reverted to baseline during search.
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): 0.462917018877826
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff
+Activation clipping : 1
+Tustin sample time : 0.0005
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

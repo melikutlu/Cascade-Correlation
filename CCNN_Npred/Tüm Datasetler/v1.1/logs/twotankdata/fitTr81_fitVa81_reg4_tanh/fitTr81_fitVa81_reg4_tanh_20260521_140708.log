@@ -1,0 +1,59 @@
+Data source : twotankdata
+CCNN Parameter Log
+Created      : 2026-05-21 14:07:08
+Script       : writeParameterLog.m
+Run folder   : fitTr81_fitVa81_reg4_tanh
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=80/20 | hidden=7/15 | regressors=4 | cand_runs=9
+Hidden added : 7
+Hidden max   : 15
+Output plateau epoch : 80
+Candidate epochs (per unit)  : [67 300 300 300 300 300 300 300 127]
+Candidate plateau epochs      : [67 NaN NaN NaN NaN NaN NaN NaN 127]
+Data source   : twotankdata
+Twotank sampling time : 0.2
+Twotank warmup samples : 20
+Twotank filter cutoff  : 0.066902
+N-step horizon : 20
+Train obj MSE  : 0.0364285
+Val   obj MSE  : 0.0487419
+Train series RMSE : 0.0315858
+Val   RMSE      : 0.0365362
+Train Fit (%)   : 80.91
+Val   Fit (%)   : 81.45
+
+Hidden units per stage : [0 1 2 3 4 5 6 7 8]
+Train obj MSE history  : [0.0420831271049388 0.038732585837539 0.0391940270505365 0.0383841973431759 0.0373372257824818 0.0368345431835616 0.0368364137481919 0.0364284706994536 0.0363970446352286]
+Val   obj MSE history  : [0.0930028878758957 0.0693410730015136 0.0591959803266981 0.0563752209814414 0.0528322966485717 0.0508439746710905 0.0496456082529841 0.0487418708357064 0.0488346764047356]
+Train RMSE history     : [0.0339489301340601 0.0325694433918355 0.0327628772422062 0.0324226361254685 0.0319773973568961 0.0317614071206005 0.0317622135784168 0.0315858494004013 0.0315722222417122]
+Val   RMSE history     : [0.0504684896179537 0.0435780075165572 0.040264118835174 0.0392930932773878 0.0380383644930076 0.0373157210099766 0.0368733426015338 0.0365361841734629 0.0365709504721132]
+Train Fit history (%)  : [79.4842828745617 80.3179220988323 80.2010278656114 80.4066393672955 80.6757021210624 80.8062274298777 80.8057400784246 80.9123189182566 80.9205539622413]
+Val   Fit history (%)  : [74.3718216179287 77.870846569336 79.5536575848375 80.0467497379191 80.6839079598243 81.0508703204964 81.2755125249644 81.4467234409841 81.4290689220905]
+Best validation stage  : #8 (hidden=7)
+Best validation metric : validation fit = 81.4467
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.0420831271049388 0.038732585837539 0.0391940270505365 0.0383841973431759 0.0373372257824818 0.0368345431835616 0.0368364137481919 0.0364284706994536]
+Regressors.u : [1 2]
+Regressors.y : [1 2]
+Norm method  : zscore
+Activation   : tanh
+Activation clipping : 1
+Tustin sample time : 0.2
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg4_tanh.png
+ - Val_reg4_tanh.png
+ - LossFinal_reg4_tanh.png
+ - LossBeforeRevert_reg4_tanh.png
+ - CandidateCorr_reg4_tanh.png
+ - LossHistory_reg4_tanh.png

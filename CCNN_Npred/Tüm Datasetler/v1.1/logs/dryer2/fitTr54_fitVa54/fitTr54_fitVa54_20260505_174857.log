@@ -1,0 +1,55 @@
+Data source : dryer2
+CCNN Parameter Log
+Created      : 2026-05-05 17:48:57
+Script       : writeParameterLog.m
+Run folder   : fitTr54_fitVa54
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=5/15 | regressors=2 | cand_runs=10
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [123 44 40 29 30 26 70 36 30 21]
+Candidate plateau epochs      : [123 44 40 29 30 26 70 36 30 21]
+Data source   : dryer2
+Dryer2 sampling time   : 0.08
+N-step horizon : 20
+Train obj MSE  : 0.20962
+Val   obj MSE  : 0.199012
+Train series RMSE : 0.383718
+Val   RMSE      : 0.373883
+Train Fit (%)   : 54.22
+Val   Fit (%)   : 54.36
+
+Hidden units per stage : [0 1 2 3 4 5 6 7 8 9]
+Train obj MSE history  : [0.372850500732924 0.3420978817939 0.313941569871291 0.237462394373625 0.198536646751153 0.209619907292788 0.206694928528501 0.196414694467996 0.181837539984529 0.188860271573588]
+Val   obj MSE history  : [0.385372380087845 0.357822232837877 0.321821782198877 0.282036008200577 0.213932673545535 0.199012255187948 0.237086334348247 0.200421809110878 0.241568177830947 0.201335912219366]
+Train RMSE history     : [0.511756473149576 0.490197590192811 0.469591678384133 0.408407210144416 0.37343611873205 0.383718061378293 0.381031508241002 0.37143512206301 0.357386178819372 0.364222091812596]
+Val   RMSE history     : [0.520278970233363 0.50133686401411 0.475448736008111 0.445090432553019 0.387645314237433 0.373883147353403 0.408083692643214 0.375204871433931 0.411922809648623 0.376059533310962]
+Train Fit history (%)  : [38.9379933635271 41.5103665981615 43.9690327599559 51.2694707645978 55.442168381424 54.2153425706301 54.5358980185932 55.6809242707877 57.3572228827013 56.5415721064842]
+Val   Fit history (%)  : [36.4918143774854 38.8039947012724 41.964045621814 45.6697513706853 52.6818265184799 54.3617142307336 50.1870027722206 54.2003771345786 49.7183784968694 54.0960522853413]
+Best validation stage  : #6 (hidden=5)
+Best validation metric : validation fit = 54.3617
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.372850500732924 0.3420978817939 0.313941569871291 0.237462394373625 0.198536646751153 0.209619907292788]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff
+Activation clipping : 1
+Tustin sample time : 0.08
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

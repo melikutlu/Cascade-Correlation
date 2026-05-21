@@ -1,0 +1,15 @@
+GRU Baseline Log
+Created      : 2026-05-17 18:47:14
+Data source  : dryer2
+Regressors u : 1
+Regressors y : 1
+Hidden units : 64
+Layers       : 1
+Dropout      : 0
+Output activation : linear
+Max epochs   : 300
+Learn rate   : 0.001
+Train RMSE   : 0.0787878
+Val RMSE     : 0.116841
+Train Fit %  : 90.60
+Val Fit %    : 85.74

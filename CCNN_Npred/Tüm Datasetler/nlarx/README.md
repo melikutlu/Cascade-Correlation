@@ -23,7 +23,7 @@ nlarx/
 
 ## Supported Datasets
 
-The framework supports three datasets:
+The framework supports four datasets:
 
 1. **twotankdata** - Two-tank system
    - Input: u (single input)
@@ -40,6 +40,13 @@ The framework supports three datasets:
    - Output: Force (F)
    - Default sampling time: 0.01 seconds
 
+4. **robotarmdata** - MathWorks industrial robot arm example
+   - Input: Torque (`ue`, `uv1`, `uv2`, `uv3`)
+   - Output: Angular velocity (`ye`, `yv1`, `yv2`, `yv3`)
+   - Raw sampling time: 0.0005 seconds
+   - Default validation experiment: 3 (`uv3/yv3`)
+   - Default downsample factor: 10, giving `Ts = 0.005`
+
 ## Usage
 
 ### Quick Start
@@ -49,7 +56,7 @@ The framework supports three datasets:
    ```matlab
    NLARX_MainScript
    ```
-3. Select dataset when prompted (1-3)
+3. Select dataset when prompted (1-4)
 4. The script will:
    - Load the selected dataset
    - Train two models (WITH and WITHOUT cross-validation)
@@ -76,10 +83,16 @@ activation = 'sigmoid';           % Activation function
 maxHiddenUnits = 20;             % Maximum hidden units for cascade-correlation
 
 % Regressor orders [na, nb, nk]
-orders = [1, 1, 1];              % Output lag, Input lag, Dead time
+orders = [3, 3, 1];              % Output lag, Input lag, Dead time
 % - na = number of output lags (y(t-1), y(t-2), ...)
 % - nb = number of input lags (u(t-1), u(t-2), ...)
 % - nk = input delay (dead time)
+```
+
+For `robotarmdata`, the script automatically uses the MathWorks example order:
+
+```matlab
+orders = [3, 5, 0];              % y(t-1:t-3), u(t:t-4)
 ```
 
 ## Performance Metrics

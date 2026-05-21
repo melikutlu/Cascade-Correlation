@@ -1,9 +1,9 @@
 clear; clc; close all;
 
 %% ===================== CONFIG =====================
-config.data.source = 'twotankdata';   % 'twotankdata', 'dryer2', 'mrdamper'
-config.data.train_ratio = 0.7;
-config.data.val_ratio   = 0.3;
+config.data.source = 'robotarmdata';   % 'twotankdata', 'dryer2', 'mrdamper', 'robotarmdata'
+config.data.train_ratio = 0.5;
+config.data.val_ratio   = 0.5;
 
 % twotank defaults
 config.data.twotank.warmup_samples = 20;
@@ -16,11 +16,16 @@ config.data.dryer2.sampling_time   = 0.08;
 % mrdamper defaults
 config.data.mrdamper.sampling_time = 0.01;   % change if needed
 
+% robotarm defaults
+config.data.robotarm.validation_experiment = 1;       % 1, 2, or 3
+config.data.robotarm.original_sampling_time = 0.001;  % change if needed
+config.data.robotarm.downsample_factor = 1;           % positive integer
+
 config.modelType = 'ss';           % 'tf' or 'ss'
 config.mode      = 'simulation';      % 'predict' or 'simulation'
 
-config.tf_num_order = 4;          % numerator order
-config.tf_den_order = 4;          % denominator order
+config.tf_num_order = 5;          % numerator order
+config.tf_den_order = 5;          % denominator order
 config.tf_io_delay  = 0;           % input delay
 
 config.ss_order = 4;

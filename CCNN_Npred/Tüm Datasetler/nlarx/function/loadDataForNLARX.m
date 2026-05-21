@@ -1,7 +1,7 @@
 function [Utr, Ytr, Uva, Yva] = loadDataForNLARX(config)
     % LOADDATAFORNLARX Load data for NLARX modeling
     % Uses same config-based approach as loadDataByConfig_min.m
-    % Supports: 'twotankdata', 'dryer2', 'mrdamper'
+    % Supports: 'twotankdata', 'dryer2', 'mrdamper', 'robotarmdata'
     % Returns raw data arrays (not iddata objects)
     
     if nargin < 1
@@ -68,6 +68,48 @@ function [Utr, Ytr, Uva, Yva] = loadDataForNLARX(config)
             Uva = u(Ntr+1:end);
             Yva = y(Ntr+1:end);
             
+        case 'robotarmdata'
+            load robotarmdata.mat; % variables: ue, ye, uv1, yv1, uv2, yv2, uv3, yv3
+
+            valExp = config.data.robotarm.validation_experiment;
+            if ischar(valExp) || isstring(valExp)
+                valExp = str2double(valExp);
+            end
+            if ~isscalar(valExp) || isnan(valExp) || ~ismember(valExp, 1:3)
+                error('config.data.robotarm.validation_experiment must be 1, 2, or 3.');
+            end
+
+            valInputs = {uv1, uv2, uv3};
+            valOutputs = {yv1, yv2, yv3};
+
+            Ts = config.data.robotarm.original_sampling_time;
+            downsampleFactor = config.data.robotarm.downsample_factor;
+            if ischar(downsampleFactor) || isstring(downsampleFactor)
+                downsampleFactor = str2double(downsampleFactor);
+            end
+            if ~isscalar(downsampleFactor) || isnan(downsampleFactor) || downsampleFactor < 1 || downsampleFactor ~= round(downsampleFactor)
+                error('config.data.robotarm.downsample_factor must be a positive integer.');
+            end
+
+            eData = iddata(ye(:), ue(:), Ts, ...
+                'InputName', 'Torque', ...
+                'OutputName', 'Angular Velocity', ...
+                'Tstart', 0);
+            vData = iddata(valOutputs{valExp}(:), valInputs{valExp}(:), Ts, ...
+                'InputName', 'Torque', ...
+                'OutputName', 'Angular Velocity', ...
+                'Tstart', 0);
+
+            eData = idresamp(eData, [downsampleFactor 1]);
+            vData = idresamp(vData, [downsampleFactor 1]);
+            eData.Name = 'estimation data';
+            vData.Name = 'validation data';
+
+            Utr = eData.u;
+            Ytr = eData.y;
+            Uva = vData.u;
+            Yva = vData.y;
+
         otherwise
             error('Unknown data source: %s', config.data.source);
     end

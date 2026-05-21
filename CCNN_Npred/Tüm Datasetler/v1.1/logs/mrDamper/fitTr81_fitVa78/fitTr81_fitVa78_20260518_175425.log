@@ -1,0 +1,56 @@
+Data source : mrDamper
+CCNN Parameter Log
+Created      : 2026-05-18 17:54:25
+Script       : writeParameterLog.m
+Run folder   : fitTr81_fitVa78
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=80/20 | hidden=3/15 | regressors=4 | cand_runs=5
+Hidden added : 3
+Hidden max   : 15
+Output plateau epoch : 80
+Candidate epochs (per unit)  : [300 43 21 21 38]
+Candidate plateau epochs      : [NaN 43 21 21 38]
+Data source   : mrDamper
+N-step horizon : 20
+Train obj MSE  : 0.0359471
+Val   obj MSE  : 0.0461078
+Train series RMSE : 11.118
+Val   RMSE      : 12.5916
+Train Fit (%)   : 81.03
+Val   Fit (%)   : 77.54
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.232604023166798 0.0362794987459374 0.0361147050513213 0.0359470723178163 0.0360173720841226]
+Val   obj MSE history  : [0.262008330360043 0.0464701501146037 0.0463092028228935 0.0461077903328937 0.0461453740179057]
+Train RMSE history     : [28.2814632239994 11.1692472056484 11.1438510932698 11.1179579423775 11.1288240302063]
+Val   RMSE history     : [30.0158615816001 12.6409671242714 12.6190574241631 12.5915855046444 12.5967163272453]
+Train Fit history (%)  : [51.7519454042631 80.9453123162982 80.9886379747642 81.0328115787965 81.0142740797055]
+Val   Fit history (%)  : [46.465744569691 77.4544281836734 77.4935048391547 77.5425018920188 77.5333509047337]
+Best validation stage  : #4 (hidden=3)
+Best validation metric : validation fit = 77.5425
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.232604023166798 0.0362794987459374 0.0361147050513213 0.0359470723178163]
+Regressors.u : [1 2]
+Regressors.y : [1 2]
+Norm method  : zscore
+Activation   : tanh
+Activation clipping : 1
+Tustin sample time : 1
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

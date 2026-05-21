@@ -1,0 +1,60 @@
+Data source : twotankdata
+CCNN Parameter Log
+Created      : 2026-05-21 14:00:10
+Script       : writeParameterLog.m
+Run folder   : fitTr80_fitVa75_reg2_tustin
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=0/15 | regressors=2 | cand_runs=4
+Hidden added : 0
+Hidden max   : 15
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [300 300 108 29]
+Candidate plateau epochs      : [NaN NaN 108 29]
+Data source   : twotankdata
+Twotank sampling time : 0.2
+Twotank warmup samples : 20
+Twotank filter cutoff  : 0.066902
+N-step horizon : 20
+Train obj MSE  : 0.0403131
+Val   obj MSE  : 0.0869178
+Train series RMSE : 0.0332273
+Val   RMSE      : 0.0487895
+Train Fit (%)   : 79.92
+Val   Fit (%)   : 75.22
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.040313063432949 0.0403845875152374 0.0411858597866325 0.0403841911025267 0.0416862002961251]
+Val   obj MSE history  : [0.0869177820866839 0.0894787096818546 0.0964316820648088 0.0930684833197211 0.0989354989559435]
+Train RMSE history     : [0.033227295327616 0.0332567584644749 0.0335850623504026 0.0332565952408922 0.033788448170329]
+Val   RMSE history     : [0.0487895046066353 0.0495030487797189 0.0513903956988793 0.0504862843312582 0.0520532876864952]
+Train Fit history (%)  : [79.9203748367654 79.9025699345479 79.7041722345827 79.9026685723794 79.5812639151612]
+Val   Fit history (%)  : [75.2244195002236 74.8620778195095 73.9036726070838 74.362785364015 73.5670523865211]
+Best validation stage  : #1 (hidden=0)
+Best validation metric : validation fit = 75.2244
+Hidden growth reverted to baseline during search.
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): 0.040313063432949
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : tustin
+Activation clipping : 1
+Tustin sample time : 0.2
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg2_tustin.png
+ - Val_reg2_tustin.png
+ - LossFinal_reg2_tustin.png
+ - LossBeforeRevert_reg2_tustin.png
+ - CandidateCorr_reg2_tustin.png
+ - LossHistory_reg2_tustin.png

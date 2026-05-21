@@ -1,0 +1,59 @@
+Data source : twotankdata
+CCNN Parameter Log
+Created      : 2026-05-21 13:16:47
+Script       : writeParameterLog.m
+Run folder   : fitTr80_fitVa76
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=6/15 | regressors=4 | cand_runs=8
+Hidden added : 6
+Hidden max   : 15
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [27 55 300 156 83 260 79 76]
+Candidate plateau epochs      : [27 55 NaN 156 83 260 79 76]
+Data source   : twotankdata
+Twotank sampling time : 0.2
+Twotank warmup samples : 20
+Twotank filter cutoff  : 0.066902
+N-step horizon : 20
+Train obj MSE  : 0.0395866
+Val   obj MSE  : 0.0849947
+Train series RMSE : 0.0329265
+Val   RMSE      : 0.0482468
+Train Fit (%)   : 80.10
+Val   Fit (%)   : 75.50
+
+Hidden units per stage : [0 1 2 3 4 5 6 7]
+Train obj MSE history  : [0.0420831271049388 0.0405829537520406 0.0411012339720549 0.0399637745147 0.0398458954363753 0.0402343213607533 0.0395865943548585 0.0398202424622608]
+Val   obj MSE history  : [0.0930028878758957 0.0850282539715521 0.0923528199289439 0.0871158695529134 0.0867383929575037 0.0888825729250346 0.0849947425184834 0.0854929644729206]
+Train RMSE history     : [0.0339489301340601 0.0333383358340083 0.0335505404933255 0.033083034706117 0.033034207015369 0.0331948286190928 0.0329265448992723 0.0330235715146951]
+Val   RMSE history     : [0.0504684896179537 0.0482562668128413 0.050291798983125 0.0488450691236364 0.0487391304072488 0.0493378703601855 0.048246756462378 0.0483879561976819]
+Train Fit history (%)  : [79.4842828745617 79.8532718202752 79.7250341778499 80.0075531393312 80.0370602574442 79.9399948308396 80.1021216749982 80.0434874091232]
+Val   Fit history (%)  : [74.3718216179287 75.4952006034995 74.4615461003158 75.1962035309288 75.2499997975042 74.9459563352471 75.5000300121066 75.428328004948]
+Best validation stage  : #7 (hidden=6)
+Best validation metric : validation fit = 75.5
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.0420831271049388 0.0405829537520406 0.0411012339720549 0.0399637745147 0.0398458954363753 0.0402343213607533 0.0395865943548585]
+Regressors.u : [1 2]
+Regressors.y : [1 2]
+Norm method  : zscore
+Activation   : diff
+Activation clipping : 1
+Tustin sample time : 0.2
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

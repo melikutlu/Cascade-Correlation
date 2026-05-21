@@ -5,7 +5,7 @@ Date: 2026-05-05
 ## Added / Changed
 - Added `robotarmdata` dataset support for the MathWorks industrial robot arm example.
 - Added `robotartdata` as an accepted alias for `robotarmdata`.
-- Robot arm loading uses `ue/ye` for training and `uv1/yv1` by default for validation; set `config.data.robotarm.validation_experiment` to 1, 2, or 3 to choose the validation experiment.
+- Robot arm loading follows the MathWorks industrial robot arm example: `ue/ye` for estimation, `uv3/yv3` for validation by default, `Ts=5e-4`, and `idresamp(...,[1 10])` downsampling to an effective `Ts=0.005`; set `config.data.robotarm.validation_experiment` to 1, 2, or 3 to choose another validation experiment.
 - Added LSTM and GRU baseline scripts under `LSTM/` and `GRU/`, both using the same dataset loader and normalization flow as CCNN.
 - Simplified LSTM/GRU run folder names to `fitTrXX_fitVaYY` and kept their logs focused on layer count and hidden-unit count.
 - Added saved LSTM/GRU training loss figures as `LossHistory.png` in each run folder.

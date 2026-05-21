@@ -21,7 +21,7 @@ addpath(funcFolder, '-begin');
 % CONFIG
 % ----------------
 config = struct();
-config.data.source = 'mrDamper'; % veri seti adı: twotankdata | dryer2 | mrDamper | robotarmdata
+config.data.source = 'dryer2'; % veri seti adı: twotankdata | dryer2 | mrDamper | robotarmdata
 
 config.data.train_ratio = 0.5; % eğitim verisi oranı
 config.data.val_ratio = 0.5; % doğrulama verisi oranı
@@ -32,8 +32,8 @@ config.prediction.n_steps = 20; % tahmin ufku; otomatik mod kapalıysa bu değer
 config.prediction.auto_full_horizon = false; % true ise kullanılabilir tüm veri uzunluğunu hedefle
 
 % regressors (user can change)
-config.regressors.u = [1 2]; % giriş gecikmeleri; u(t), u(t-1) gibi terimleri seçer
-config.regressors.y = [1 2]; % çıkış gecikmeleri; y(t-1), y(t-2) gibi terimleri seçer
+config.regressors.u = [1 2 3]; % giriş gecikmeleri; u(t), u(t-1) gibi terimleri seçer
+config.regressors.y = [1 2 3]; % çıkış gecikmeleri; y(t-1), y(t-2) gibi terimleri seçer
 config.regressors.include_bias = false; % sabit bias regressor'ü ekle veya çıkar
 
 % model / training
@@ -476,12 +476,12 @@ end
 figTrain = figure('Name','TRAIN - Full Recursive','Color','w');
 plot(Ytr_raw(2:end),'k','LineWidth',1.4); hold on;
 plot(Yhat_tr,'b--','LineWidth',1.2); grid on;
-title(sprintf('TRAIN | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_tr)); legend('True','CCNN');
+title(sprintf('TRAIN | Regressors=%d | Hidden=%d | Fit=%.2f%%', logInfo.regressor_count, numel(W_hidden), fit_tr)); legend('True','CCNN');
 
 figVal = figure('Name','VAL - Full Recursive','Color','w');
 plot(Yva_raw(2:end),'k','LineWidth',1.4); hold on;
 plot(Yhat_va,'r--','LineWidth',1.2); grid on;
-title(sprintf('VAL | Hidden=%d | Fit=%.2f%%', numel(W_hidden), fit_va)); legend('True','CCNN');
+title(sprintf('VAL | Regressors=%d | Hidden=%d | Fit=%.2f%%', logInfo.regressor_count, numel(W_hidden), fit_va)); legend('True','CCNN');
 
 % also save the loss-vs-units figure into the run folder so it's available visually
 % include the output loss-history figure (if present) when saving run figures
@@ -489,7 +489,7 @@ figMap = struct('train', figTrain, 'val', figVal, 'loss_final', lossFigHandle, '
 if exist('lossHistoryFig','var') && ~isempty(lossHistoryFig) && ishandle(lossHistoryFig)
     figMap.loss_history = lossHistoryFig;
 end
-savedFigurePaths = saveFitFigures(logFilePath, figMap);
+savedFigurePaths = saveFitFigures(logFilePath, figMap, logInfo.activation, logInfo.regressor_count);
 if ~isempty(savedFigurePaths) && ~isempty(logFilePath)
     appendFigureInfoToLog(logFilePath, savedFigurePaths);
 end

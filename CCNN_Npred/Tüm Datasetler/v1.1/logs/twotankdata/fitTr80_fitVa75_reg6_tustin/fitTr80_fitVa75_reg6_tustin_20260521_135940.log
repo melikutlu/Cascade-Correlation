@@ -1,0 +1,59 @@
+Data source : twotankdata
+CCNN Parameter Log
+Created      : 2026-05-21 13:59:40
+Script       : writeParameterLog.m
+Run folder   : fitTr80_fitVa75_reg6_tustin
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=100/20 | hidden=4/15 | regressors=6 | cand_runs=6
+Hidden added : 4
+Hidden max   : 15
+Output plateau epoch : 100
+Candidate epochs (per unit)  : [300 208 79 44 22 37]
+Candidate plateau epochs      : [NaN 208 79 44 22 37]
+Data source   : twotankdata
+Twotank sampling time : 0.2
+Twotank warmup samples : 20
+Twotank filter cutoff  : 0.066902
+N-step horizon : 20
+Train obj MSE  : 0.0409862
+Val   obj MSE  : 0.0872252
+Train series RMSE : 0.0335036
+Val   RMSE      : 0.0488757
+Train Fit (%)   : 79.75
+Val   Fit (%)   : 75.18
+
+Hidden units per stage : [0 1 2 3 4 5]
+Train obj MSE history  : [0.0424292632390726 0.0419273285162469 0.043435044912511 0.0418085043048637 0.0409862339582754 0.0413587346131455]
+Val   obj MSE history  : [0.0911853908191813 0.0907007228258092 0.0969714688438 0.0909975821460547 0.0872251501779113 0.0892699904394186]
+Train RMSE history     : [0.0340882601701376 0.0338860296295696 0.0344899232576328 0.0338379781825368 0.0335035709149359 0.0336554740405576]
+Val   RMSE history     : [0.0499729195123801 0.0498399346993339 0.0515340266333869 0.0499214299853649 0.0488756958440043 0.0494452793326976]
+Train Fit history (%)  : [79.4000841797588 79.5222943509788 79.1573546960831 79.5513323763569 79.7534184179405 79.6616216648935]
+Val   Fit history (%)  : [74.6234748606274 74.6910052847921 73.8307360235124 74.6496215274514 75.1806511128004 74.8914134644734]
+Best validation stage  : #5 (hidden=4)
+Best validation metric : validation fit = 75.1807
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.0424292632390726 0.0419273285162469 0.043435044912511 0.0418085043048637 0.0409862339582754]
+Regressors.u : [1 2 3]
+Regressors.y : [1 2 3]
+Norm method  : zscore
+Activation   : tustin
+Activation clipping : 1
+Tustin sample time : 0.2
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg6_tustin.png
+ - Val_reg6_tustin.png
+ - LossFinal_reg6_tustin.png
+ - LossBeforeRevert_reg6_tustin.png
+ - CandidateCorr_reg6_tustin.png
+ - LossHistory_reg6_tustin.png

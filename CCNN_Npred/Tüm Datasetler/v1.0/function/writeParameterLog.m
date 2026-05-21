@@ -21,7 +21,25 @@ function logFilePath = writeParameterLog(config, logInfo)
     fitTrStr = sprintf('%d', round(logInfo.fit_train));
     fitVaStr = sprintf('%d', round(logInfo.fit_val));
     
-    runFolderName = sprintf('fitTr%s_fitVa%s', fitTrStr, fitVaStr);
+    % Regresör sayısını klasör adına ekle (farklı regresör kombinasyonları karışmasın)
+    regressorLabel = '';
+    if isfield(logInfo, 'regressor_count') && ~isempty(logInfo.regressor_count)
+        regressorLabel = sprintf('_reg%d', logInfo.regressor_count);
+    end
+    
+    % Activation metodunu klasör adına ekle (overwrite'yi önle)
+    activationLabel = '';
+    if isfield(logInfo, 'activation') && ~isempty(logInfo.activation)
+        activationLabel = char(logInfo.activation);
+        activationLabel = regexprep(activationLabel, '[^A-Za-z0-9_-]', '_');
+        activationLabel = lower(activationLabel);
+    end
+    
+    if ~isempty(activationLabel)
+        runFolderName = sprintf('fitTr%s_fitVa%s%s_%s', fitTrStr, fitVaStr, regressorLabel, activationLabel);
+    else
+        runFolderName = sprintf('fitTr%s_fitVa%s%s', fitTrStr, fitVaStr, regressorLabel);
+    end
     runFolderPath = fullfile(projectDir, 'logs', dataLabel, runFolderName);
     if exist(runFolderPath,'dir') == 0
         [mkStatus, mkMsg] = mkdir(runFolderPath);

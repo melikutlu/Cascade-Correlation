@@ -58,10 +58,33 @@ function [Utr, Ytr, Uva, Yva] = loadDataByConfig_min(config)
             valInputs = {uv1, uv2, uv3};
             valOutputs = {yv1, yv2, yv3};
 
-            Utr = ue(:);
-            Ytr = ye(:);
-            Uva = valInputs{valExp}(:);
-            Yva = valOutputs{valExp}(:);
+            Ts = config.data.robotarm.original_sampling_time;
+            downsampleFactor = config.data.robotarm.downsample_factor;
+            if ischar(downsampleFactor) || isstring(downsampleFactor)
+                downsampleFactor = str2double(downsampleFactor);
+            end
+            if ~isscalar(downsampleFactor) || isnan(downsampleFactor) || downsampleFactor < 1 || downsampleFactor ~= round(downsampleFactor)
+                error('config.data.robotarm.downsample_factor must be a positive integer.');
+            end
+
+            eData = iddata(ye(:), ue(:), Ts, ...
+                'InputName', 'Torque', ...
+                'OutputName', 'Angular Velocity', ...
+                'Tstart', 0);
+            vData = iddata(valOutputs{valExp}(:), valInputs{valExp}(:), Ts, ...
+                'InputName', 'Torque', ...
+                'OutputName', 'Angular Velocity', ...
+                'Tstart', 0);
+
+            eData = idresamp(eData, [1 downsampleFactor]);
+            vData = idresamp(vData, [1 downsampleFactor]);
+            eData.Name = 'estimation data';
+            vData.Name = 'validation data';
+
+            Utr = eData.u;
+            Ytr = eData.y;
+            Uva = vData.u;
+            Yva = vData.y;
         otherwise
             error('Unknown data source: %s', config.data.source);
     end

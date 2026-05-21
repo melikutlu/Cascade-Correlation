@@ -1,0 +1,58 @@
+Data source : twotankdata
+CCNN Parameter Log
+Created      : 2026-05-21 13:46:50
+Script       : writeParameterLog.m
+Run folder   : fitTr81_fitVa80_tanh
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=80/20 | hidden=5/15 | regressors=6 | cand_runs=6
+Hidden added : 5
+Hidden max   : 15
+Output plateau epoch : 80
+Candidate epochs (per unit)  : [300 300 300 300 300 300]
+Candidate plateau epochs      : [NaN NaN NaN NaN NaN NaN]
+Data source   : twotankdata
+Twotank sampling time : 0.2
+Twotank warmup samples : 20
+Twotank filter cutoff  : 0.066902
+N-step horizon : 20
+Train obj MSE  : 0.0377443
+Val   obj MSE  : 0.0572244
+Train series RMSE : 0.0321512
+Val   RMSE      : 0.0395879
+Train Fit (%)   : 80.57
+Val   Fit (%)   : 79.90
+
+Hidden units per stage : [0 1 2 3 4 5]
+Train obj MSE history  : [0.0424292632390726 0.0401944856639248 0.0391367227160757 0.0384903754671788 0.0395936387812015 0.0377442716607377]
+Val   obj MSE history  : [0.0911853908191813 0.0695004207094198 0.0654160161328843 0.0637992713654054 0.064720469862726 0.0572244123432603]
+Train RMSE history     : [0.0340882601701376 0.0331783915753446 0.0327389177034635 0.0324674488022618 0.0329294744049063 0.0321512317024532]
+Val   RMSE history     : [0.0499729195123801 0.0436280505176366 0.0423266733410098 0.041800353058106 0.0421010494254634 0.0395879270498327]
+Train Fit history (%)  : [79.4000841797588 79.9499279197053 80.2155068821035 80.3795585668963 80.1003513420697 80.5706520872012]
+Val   Fit history (%)  : [74.6234748606274 77.845434456389 78.506280990086 78.7735493430418 78.6208540632779 79.8970315163025]
+Best validation stage  : #6 (hidden=5)
+Best validation metric : validation fit = 79.897
+MSE history (final selected prefix): [0.0424292632390726 0.0401944856639248 0.0391367227160757 0.0384903754671788 0.0395936387812015 0.0377442716607377]
+Regressors.u : [1 2 3]
+Regressors.y : [1 2 3]
+Norm method  : zscore
+Activation   : tanh
+Activation clipping : 1
+Tustin sample time : 0.2
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_tanh.png
+ - Val_tanh.png
+ - LossFinal_tanh.png
+ - LossBeforeRevert_tanh.png
+ - CandidateCorr_tanh.png
+ - LossHistory_tanh.png

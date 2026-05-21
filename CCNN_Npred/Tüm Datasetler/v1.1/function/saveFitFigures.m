@@ -1,7 +1,17 @@
-function savedPaths = saveFitFigures(logFilePath, figMap)
+function savedPaths = saveFitFigures(logFilePath, figMap, activation, regressorCount)
     savedPaths = {};
     if nargin < 2 || isempty(figMap)
         return;
+    end
+    
+    % activation parametresi opsiyonel, boşsa varsayılan olarak boş string
+    if nargin < 3
+        activation = '';
+    end
+    
+    % regressorCount parametresi opsiyonel
+    if nargin < 4
+        regressorCount = '';
     end
 
     if isempty(logFilePath)
@@ -17,6 +27,21 @@ function savedPaths = saveFitFigures(logFilePath, figMap)
         [targetDir, baseName] = fileparts(logFilePath);
     end
 
+    % Regresör bilgisini hazırla (dosya isimlerine eklenecek)
+    regressorSuffix = '';
+    if ~isempty(regressorCount)
+        regressorSuffix = sprintf('_reg%d', regressorCount);
+    end
+    
+    % Activation bilgisini hazırla (dosya isimlerine eklenecek)
+    activationSuffix = '';
+    if ~isempty(activation)
+        activation = char(activation);
+        activationClean = regexprep(activation, '[^A-Za-z0-9_-]', '_');
+        activationClean = lower(activationClean);
+        activationSuffix = sprintf('_%s', activationClean);
+    end
+
     labels = fieldnames(figMap);
     for k = 1:numel(labels)
         figHandle = figMap.(labels{k});
@@ -25,7 +50,8 @@ function savedPaths = saveFitFigures(logFilePath, figMap)
         end
         % Create readable filename from label
         displayLabel = makeReadableLabel(labels{k});
-        fileName = sprintf('%s.png', displayLabel);
+        % Regresör ve activation bilgisini dosya ismine ekle (overwrite'yi önle)
+        fileName = sprintf('%s%s%s.png', displayLabel, regressorSuffix, activationSuffix);
         filePath = fullfile(targetDir, fileName);
         try
             exportgraphics(figHandle, filePath, 'Resolution', 150);

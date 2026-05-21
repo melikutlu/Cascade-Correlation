@@ -30,8 +30,11 @@ function config = applyDatasetDefaults(config)
             if ~isfield(config.data, 'robotarm') || isempty(config.data.robotarm)
                 config.data.robotarm = struct();
             end
-            config.data.robotarm = setDefaultField(config.data.robotarm, 'sampling_time', 0.5e-3);
-            config.data.robotarm = setDefaultField(config.data.robotarm, 'validation_experiment', 1);
+            config.data.robotarm = setDefaultField(config.data.robotarm, 'original_sampling_time', 0.5e-3);
+            config.data.robotarm = setDefaultField(config.data.robotarm, 'downsample_factor', 10);
+            config.data.robotarm = setDefaultField(config.data.robotarm, 'sampling_time', ...
+                config.data.robotarm.original_sampling_time * config.data.robotarm.downsample_factor);
+            config.data.robotarm = setDefaultField(config.data.robotarm, 'validation_experiment', 3);
         otherwise
             error('Unknown data source: %s', config.data.source);
     end

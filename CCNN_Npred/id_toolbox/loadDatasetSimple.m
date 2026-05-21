@@ -61,6 +61,50 @@ function [Utr, Ytr, Uva, Yva, Ts, dataInfo] = loadDatasetSimple(config)
 
             Ts = config.data.mrdamper.sampling_time;
 
+        case 'robotarmdata'
+            load robotarmdata.mat;  % variables: ue, ye, uv1, yv1, uv2, yv2, uv3, yv3
+
+            valExp = config.data.robotarm.validation_experiment;
+            if ischar(valExp) || isstring(valExp)
+                valExp = str2double(valExp);
+            end
+            if ~isscalar(valExp) || isnan(valExp) || ~ismember(valExp, 1:3)
+                error('config.data.robotarm.validation_experiment must be 1, 2, or 3.');
+            end
+
+            valInputs = {uv1, uv2, uv3};
+            valOutputs = {yv1, yv2, yv3};
+
+            Ts = config.data.robotarm.original_sampling_time;
+            downsampleFactor = config.data.robotarm.downsample_factor;
+            if ischar(downsampleFactor) || isstring(downsampleFactor)
+                downsampleFactor = str2double(downsampleFactor);
+            end
+            if ~isscalar(downsampleFactor) || isnan(downsampleFactor) || downsampleFactor < 1 || downsampleFactor ~= round(downsampleFactor)
+                error('config.data.robotarm.downsample_factor must be a positive integer.');
+            end
+
+            eData = iddata(ye(:), ue(:), Ts, ...
+                'InputName', 'Torque', ...
+                'OutputName', 'Angular Velocity', ...
+                'Tstart', 0);
+            vData = iddata(valOutputs{valExp}(:), valInputs{valExp}(:), Ts, ...
+                'InputName', 'Torque', ...
+                'OutputName', 'Angular Velocity', ...
+                'Tstart', 0);
+
+            eData = idresamp(eData, [downsampleFactor 1]);
+            vData = idresamp(vData, [downsampleFactor 1]);
+            eData.Name = 'estimation data';
+            vData.Name = 'validation data';
+
+            u = eData.u;
+            y = eData.y;
+            Uva = vData.u;
+            Yva = vData.y;
+            Utr = u;
+            Ytr = y;
+
         otherwise
             error('Unknown data source: %s', config.data.source);
     end

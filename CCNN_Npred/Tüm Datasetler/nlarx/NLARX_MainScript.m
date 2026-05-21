@@ -24,16 +24,16 @@ fprintf('\n=====================================\n');
 fprintf('  NLARX Training - Dataset Selection\n');
 fprintf('=====================================\n\n');
 
-availableDatasets = {'twotankdata', 'dryer2', 'mrdamper'};
+availableDatasets = {'twotankdata', 'dryer2', 'mrdamper', 'robotarmdata'};
 fprintf('Available datasets:\n');
 for i = 1:length(availableDatasets)
     fprintf('  %d: %s\n', i, availableDatasets{i});
 end
 fprintf('\n');
 
-datasetChoice = input('Select dataset (1-3): ');
+datasetChoice = input('Select dataset (1-4): ');
 if datasetChoice < 1 || datasetChoice > length(availableDatasets)
-    error('Invalid choice. Please select 1-3.');
+    error('Invalid choice. Please select 1-4.');
 end
 datasetName = availableDatasets{datasetChoice};
 fprintf('\nSelected: %s\n\n', datasetName);
@@ -47,6 +47,25 @@ config.data.source = datasetName;
 config.data.train_ratio = 0.5;
 config.data.val_ratio = 0.5;
 config.norm_method = 'zscore';  % Z-score normalization
+
+% Additional configuration for robotarmdata
+if strcmpi(datasetName, 'robotarmdata')
+    fprintf('RobotArm dataset requires additional configuration:\n');
+    fprintf('Available validation experiments: 1, 2, 3 (MathWorks example uses 3)\n');
+    valExp = input('Select validation experiment (1-3, default 3): ');
+    if isempty(valExp)
+        config.data.robotarm.validation_experiment = 3;
+    else
+        config.data.robotarm.validation_experiment = valExp;
+    end
+    fprintf('Downsample factor (default 10, matching MathWorks example): ');
+    ds_factor = input('');
+    if isempty(ds_factor)
+        config.data.robotarm.downsample_factor = 10;
+    else
+        config.data.robotarm.downsample_factor = ds_factor;
+    end
+end
 
 % =========================================
 % LOAD RAW DATA
@@ -83,6 +102,8 @@ switch lower(config.data.source)
         Ts = config.data.dryer2.sampling_time;
     case 'mrdamper'
         Ts = 0.01;  % default for mrdamper
+    case 'robotarmdata'
+        Ts = config.data.robotarm.original_sampling_time * config.data.robotarm.downsample_factor;
     otherwise
         Ts = 1;
 end
@@ -140,7 +161,11 @@ fprintf('Neural network created.\n');
 % na = output lag order
 % nb = input lag order  
 % nk = dead time (delay)
-orders = [3, 3, 1];  % Typical choice
+if strcmpi(datasetName, 'robotarmdata')
+    orders = [3, 3, 0];  % MathWorks robot arm NLARX example: y(t-1:t-3), u(t:t-4)
+else
+    orders = [3, 3, 1];  % General fallback choice for the other SISO datasets
+end
 fprintf('Regressor orders (na, nb, nk): [%d, %d, %d]\n\n', orders(1), orders(2), orders(3));
 
 % =========================================
@@ -149,7 +174,9 @@ fprintf('Regressor orders (na, nb, nk): [%d, %d, %d]\n\n', orders(1), orders(2),
 fprintf('--- Training Phase: WITHOUT Cross-Validation ---\n');
 
 opt2 = nlarxOptions;
-opt2.SearchOptions.MaxIterations = 0;
+opt2.Focus = 'simulation';
+opt2.Display = 'on';
+opt2.SearchOptions.MaxIterations = 20;
 opt2.NormalizationOptions.NormalizationMethod = 'zscore';
 opt2.CrossValidate = false;  % Disable cross-validation
 
@@ -164,6 +191,16 @@ fprintf('Output function: %s\n', class(outputFcn));
 % Evaluate performance
 fprintf('Evaluating performance...\n');
 [yhat_tr, fit_tr, yhat_va, fit_va, yhat_tr_raw, yhat_va_raw] = evaluateNLARXPerformance(dataTraining, dataValidation, sys2, norm_stats);
+
+% Check for NaN values in output
+if any(isnan(yhat_tr_raw)) || any(isnan(yhat_va_raw))
+    fprintf('\nWarning: Model simulation produced NaN values.\n');
+    fprintf('This may indicate numerical instability in the model training.\n');
+    fprintf('Skipping performance visualization.\n\n');
+    % Skip further processing
+    return;
+end
+
 rmse_tr = calculateRMSE(Ytr_raw, yhat_tr_raw);
 rmse_va = calculateRMSE(Yva_raw, yhat_va_raw);
 
@@ -202,13 +239,26 @@ fig3 = figure('Name', 'Loss Metrics', 'Color', 'w');
 mse_tr = mean((Ytr_raw - yhat_tr_raw).^2);
 mse_va = mean((Yva_raw - yhat_va_raw).^2);
 metrics = [mse_tr, mse_va];
+
+% Remove NaN values for plotting
+metrics(isnan(metrics)) = 0;
+
 bar([1, 2], metrics, 'FaceColor', [0.2 0.4 0.8], 'EdgeColor', 'k', 'LineWidth', 1.5);
 xlabel('Data Set'); ylabel('MSE (Mean Squared Error)');
 set(gca, 'XTickLabel', {'Training', 'Validation'});
 title(sprintf('%s - Loss Metrics (MSE)', datasetName));
-ylim([0, max(metrics)*1.2]);
+
+% Set ylim safely (check for valid values)
+if ~all(isnan(metrics)) && max(metrics) > 0
+    ylim([0, max(metrics)*1.2]);
+else
+    ylim([0, 1]);
+end
+
 for i = 1:2
-    text(i, metrics(i) + max(metrics)*0.05, sprintf('%.6g', metrics(i)), 'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
+    if ~isnan(metrics(i))
+        text(i, metrics(i) + max(metrics(~isnan(metrics)))*0.05, sprintf('%.6g', metrics(i)), 'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
+    end
 end
 grid on; set(gca, 'GridLineStyle', ':');
 lossFigPath = fullfile(logDir, sprintf('%s_Loss_Metrics.png', datasetName));

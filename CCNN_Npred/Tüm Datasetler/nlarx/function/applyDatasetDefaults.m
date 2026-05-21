@@ -25,6 +25,16 @@ function config = applyDatasetDefaults(config)
             if ~isfield(config.data, 'mrdamper') || isempty(config.data.mrdamper)
                 config.data.mrdamper = struct();
             end
+        case {"robotarmdata", "robotarm", "robot_arm", "robotarmdataset"}
+            config.data.source_label = 'robotarmdata';
+            if ~isfield(config.data, 'robotarm') || isempty(config.data.robotarm)
+                config.data.robotarm = struct();
+            end
+            % MathWorks robotarmdata.mat uses Ts=5e-4 and the published
+            % NLARX example downsamples by 10, then validates on uv3/yv3.
+            config.data.robotarm = setDefaultField(config.data.robotarm, 'original_sampling_time', 5e-4);
+            config.data.robotarm = setDefaultField(config.data.robotarm, 'downsample_factor', 10);
+            config.data.robotarm = setDefaultField(config.data.robotarm, 'validation_experiment', 3);
         otherwise
             error('Unknown data source: %s', config.data.source);
     end

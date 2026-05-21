@@ -76,8 +76,8 @@ function [Utr, Ytr, Uva, Yva] = loadDataByConfig_min(config)
                 'OutputName', 'Angular Velocity', ...
                 'Tstart', 0);
 
-            eData = idresamp(eData, [1 downsampleFactor]);
-            vData = idresamp(vData, [1 downsampleFactor]);
+            eData = idresamp(eData, [downsampleFactor 1]);
+            vData = idresamp(vData, [downsampleFactor 1]);
             eData.Name = 'estimation data';
             vData.Name = 'validation data';
 

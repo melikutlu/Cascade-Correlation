@@ -144,51 +144,9 @@ orders = [3, 3, 1];  % Typical choice
 fprintf('Regressor orders (na, nb, nk): [%d, %d, %d]\n\n', orders(1), orders(2), orders(3));
 
 % =========================================
-% TRAINING OPTIONS - WITH CROSS-VALIDATION
-% =========================================
-fprintf('--- Training Phase 1: WITH Cross-Validation ---\n');
-
-opt1 = nlarxOptions;
-opt1.SearchOptions.MaxIterations = 0;  % Let algorithm decide iterations
-opt1.NormalizationOptions.NormalizationMethod = 'zscore';
-opt1.CrossValidationOptions.HoldoutFraction = 0.1;
-
-fprintf('Training model with cross-validation...\n');
-sys1 = nlarx(dataTraining, orders, f, opt1);
-fprintf('Training completed.\n\n');
-
-% Get output function structure
-outputFcn1 = sys1.OutputFcn;
-fprintf('Output function (CV): %s\n', class(outputFcn1));
-
-% Evaluate performance with cross-validation
-fprintf('Evaluating performance with cross-validation...\n');
-[yhat_tr1, fit_tr1, yhat_va1, fit_va1, yhat_tr1_raw, yhat_va1_raw] = evaluateNLARXPerformance(dataTraining, dataValidation, sys1, norm_stats);
-rmse_tr1 = calculateRMSE(Ytr_raw, yhat_tr1_raw);
-rmse_va1 = calculateRMSE(Yva_raw, yhat_va1_raw);
-
-fprintf('  Training Fit: %.2f%%\n', fit_tr1);
-fprintf('  Training RMSE (raw data): %.6g\n', rmse_tr1);
-fprintf('  Validation Fit: %.2f%%\n', fit_va1);
-fprintf('  Validation RMSE (raw data): %.6g\n\n', rmse_va1);
-
-% Plotting results with CV (using raw data and predictions)
-figure('Name', 'Training Fit - WITH CV', 'Color', 'w');
-plot(Ytr_raw, 'k', 'LineWidth', 1.4); hold on;
-plot(yhat_tr1_raw, 'b--', 'LineWidth', 1.2); grid on;
-title(sprintf('%s - Training Data (WITH CV, Fit=%.2f%%, RMSE=%.4g)', datasetName, fit_tr1, rmse_tr1));
-legend('True Data', 'Model Simulation', 'Location', 'best');
-
-figure('Name', 'Validation Fit - WITH CV', 'Color', 'w');
-plot(Yva_raw, 'k', 'LineWidth', 1.4); hold on;
-plot(yhat_va1_raw, 'r--', 'LineWidth', 1.2); grid on;
-title(sprintf('%s - Validation Data (WITH CV, Fit=%.2f%%, RMSE=%.4g)', datasetName, fit_va1, rmse_va1));
-legend('True Data', 'Model Simulation', 'Location', 'best');
-
-% =========================================
 % TRAINING OPTIONS - WITHOUT CROSS-VALIDATION
 % =========================================
-fprintf('--- Training Phase 2: WITHOUT Cross-Validation ---\n');
+fprintf('--- Training Phase: WITHOUT Cross-Validation ---\n');
 
 opt2 = nlarxOptions;
 opt2.SearchOptions.MaxIterations = 0;
@@ -200,92 +158,102 @@ sys2 = nlarx(dataTraining, orders, f, opt2);
 fprintf('Training completed.\n\n');
 
 % Get output function structure
-outputFcn2 = sys2.OutputFcn;
-fprintf('Output function (No CV): %s\n', class(outputFcn2));
+outputFcn = sys2.OutputFcn;
+fprintf('Output function: %s\n', class(outputFcn));
 
-% Evaluate performance without cross-validation
-fprintf('Evaluating performance without cross-validation...\n');
-[yhat_tr2, fit_tr2, yhat_va2, fit_va2, yhat_tr2_raw, yhat_va2_raw] = evaluateNLARXPerformance(dataTraining, dataValidation, sys2, norm_stats);
-rmse_tr2 = calculateRMSE(Ytr_raw, yhat_tr2_raw);
-rmse_va2 = calculateRMSE(Yva_raw, yhat_va2_raw);
+% Evaluate performance
+fprintf('Evaluating performance...\n');
+[yhat_tr, fit_tr, yhat_va, fit_va, yhat_tr_raw, yhat_va_raw] = evaluateNLARXPerformance(dataTraining, dataValidation, sys2, norm_stats);
+rmse_tr = calculateRMSE(Ytr_raw, yhat_tr_raw);
+rmse_va = calculateRMSE(Yva_raw, yhat_va_raw);
 
-fprintf('  Training Fit: %.2f%%\n', fit_tr2);
-fprintf('  Training RMSE (raw data): %.6g\n', rmse_tr2);
-fprintf('  Validation Fit: %.2f%%\n', fit_va2);
-fprintf('  Validation RMSE (raw data): %.6g\n\n', rmse_va2);
+fprintf('  Training Fit: %.2f%%\n', fit_tr);
+fprintf('  Training RMSE (raw data): %.6g\n', rmse_tr);
+fprintf('  Validation Fit: %.2f%%\n', fit_va);
+fprintf('  Validation RMSE (raw data): %.6g\n\n', rmse_va);
 
-% Plotting results without CV (using raw data and predictions)
-figure('Name', 'Training Fit - WITHOUT CV', 'Color', 'w');
+% Create log directory if it doesn't exist
+logDir = fullfile(scriptDir, 'logs', datasetName);
+if ~exist(logDir, 'dir')
+    mkdir(logDir);
+end
+
+% Plotting results (using raw data and predictions)
+fig1 = figure('Name', 'Training Fit', 'Color', 'w');
 plot(Ytr_raw, 'k', 'LineWidth', 1.4); hold on;
-plot(yhat_tr2_raw, 'b--', 'LineWidth', 1.2); grid on;
-title(sprintf('%s - Training Data (WITHOUT CV, Fit=%.2f%%, RMSE=%.4g)', datasetName, fit_tr2, rmse_tr2));
+plot(yhat_tr_raw, 'b--', 'LineWidth', 1.2); grid on;
+title(sprintf('%s - Training Data (Fit=%.2f%%, RMSE=%.4g)', datasetName, fit_tr, rmse_tr));
 legend('True Data', 'Model Simulation', 'Location', 'best');
+trainingFigPath = fullfile(logDir, sprintf('%s_Training_Fit.png', datasetName));
+saveas(fig1, trainingFigPath, 'png');
+fprintf('Training figure saved: %s\n', trainingFigPath);
 
-figure('Name', 'Validation Fit - WITHOUT CV', 'Color', 'w');
+fig2 = figure('Name', 'Validation Fit', 'Color', 'w');
 plot(Yva_raw, 'k', 'LineWidth', 1.4); hold on;
-plot(yhat_va2_raw, 'r--', 'LineWidth', 1.2); grid on;
-title(sprintf('%s - Validation Data (WITHOUT CV, Fit=%.2f%%, RMSE=%.4g)', datasetName, fit_va2, rmse_va2));
+plot(yhat_va_raw, 'r--', 'LineWidth', 1.2); grid on;
+title(sprintf('%s - Validation Data (Fit=%.2f%%, RMSE=%.4g)', datasetName, fit_va, rmse_va));
 legend('True Data', 'Model Simulation', 'Location', 'best');
+validationFigPath = fullfile(logDir, sprintf('%s_Validation_Fit.png', datasetName));
+saveas(fig2, validationFigPath, 'png');
+fprintf('Validation figure saved: %s\n', validationFigPath);
+
+% Plotting loss metrics (MSE-based)
+fig3 = figure('Name', 'Loss Metrics', 'Color', 'w');
+mse_tr = mean((Ytr_raw - yhat_tr_raw).^2);
+mse_va = mean((Yva_raw - yhat_va_raw).^2);
+metrics = [mse_tr, mse_va];
+bar([1, 2], metrics, 'FaceColor', [0.2 0.4 0.8], 'EdgeColor', 'k', 'LineWidth', 1.5);
+xlabel('Data Set'); ylabel('MSE (Mean Squared Error)');
+set(gca, 'XTickLabel', {'Training', 'Validation'});
+title(sprintf('%s - Loss Metrics (MSE)', datasetName));
+ylim([0, max(metrics)*1.2]);
+for i = 1:2
+    text(i, metrics(i) + max(metrics)*0.05, sprintf('%.6g', metrics(i)), 'HorizontalAlignment', 'center', 'FontSize', 10, 'FontWeight', 'bold');
+end
+grid on; set(gca, 'GridLineStyle', ':');
+lossFigPath = fullfile(logDir, sprintf('%s_Loss_Metrics.png', datasetName));
+saveas(fig3, lossFigPath, 'png');
+fprintf('Loss metrics figure saved: %s\n', lossFigPath);
 
 % =========================================
-% COMPARISON SUMMARY
+% TRAINING SUMMARY
 % =========================================
 fprintf('\n=====================================\n');
-fprintf('  COMPARISON SUMMARY\n');
+fprintf('  TRAINING SUMMARY\n');
 fprintf('=====================================\n\n');
 
-fprintf('WITH Cross-Validation:\n');
-fprintf('  Train Fit: %.2f%% | Train RMSE (raw): %.6g\n', fit_tr1, rmse_tr1);
-fprintf('  Val Fit:   %.2f%% | Val RMSE (raw):   %.6g\n\n', fit_va1, rmse_va1);
-
-fprintf('WITHOUT Cross-Validation:\n');
-fprintf('  Train Fit: %.2f%% | Train RMSE (raw): %.6g\n', fit_tr2, rmse_tr2);
-fprintf('  Val Fit:   %.2f%% | Val RMSE (raw):   %.6g\n\n', fit_va2, rmse_va2);
+fprintf('Training Results:\n');
+fprintf('  Train Fit: %.2f%% | Train RMSE (raw): %.6g\n', fit_tr, rmse_tr);
+fprintf('  Val Fit:   %.2f%% | Val RMSE (raw):   %.6g\n\n', fit_va, rmse_va);
 
 % =========================================
 % LOG RESULTS
 % =========================================
-fprintf('Saving training logs...\n\n');
+fprintf('\nSaving training logs...\n\n');
 
-% Log WITH cross-validation
-trainInfo1 = struct();
-trainInfo1.dataset = datasetName;
-trainInfo1.activation = activation;
-trainInfo1.maxHiddenUnits = maxHiddenUnits;
-trainInfo1.orders = orders;
-trainInfo1.crossValidation = true;
-trainInfo1.trainFit = fit_tr1;
-trainInfo1.trainRMSE = rmse_tr1;
-trainInfo1.valFit = fit_va1;
-trainInfo1.valRMSE = rmse_va1;
-trainInfo1.trainSamples = length(Ytr_raw);
-trainInfo1.valSamples = length(Yva_raw);
-trainInfo1.normMethod = 'zscore';
-trainInfo1.normStats = norm_stats;
-trainInfo1.notes = 'Model trained WITH cross-validation (Z-score normalized)';
+% Log training information
+trainInfo = struct();
+trainInfo.dataset = datasetName;
+trainInfo.activation = activation;
+trainInfo.maxHiddenUnits = maxHiddenUnits;
+trainInfo.orders = orders;
+trainInfo.crossValidation = false;
+trainInfo.trainFit = fit_tr;
+trainInfo.trainRMSE = rmse_tr;
+trainInfo.valFit = fit_va;
+trainInfo.valRMSE = rmse_va;
+trainInfo.trainSamples = length(Ytr_raw);
+trainInfo.valSamples = length(Yva_raw);
+trainInfo.normMethod = 'zscore';
+trainInfo.normStats = norm_stats;
+trainInfo.trainingFigure = trainingFigPath;
+trainInfo.validationFigure = validationFigPath;
+trainInfo.lossFigure = lossFigPath;
+trainInfo.notes = 'Model trained without cross-validation (Z-score normalized). All figures saved as PNG.';
 
-logPath1 = writeNLARXLog('logs', [datasetName '_CV'], trainInfo1);
-fprintf('Log saved: %s\n', logPath1);
 
-% Log WITHOUT cross-validation
-trainInfo2 = struct();
-trainInfo2.dataset = datasetName;
-trainInfo2.activation = activation;
-trainInfo2.maxHiddenUnits = maxHiddenUnits;
-trainInfo2.orders = orders;
-trainInfo2.crossValidation = false;
-trainInfo2.trainFit = fit_tr2;
-trainInfo2.trainRMSE = rmse_tr2;
-trainInfo2.valFit = fit_va2;
-trainInfo2.valRMSE = rmse_va2;
-trainInfo2.trainSamples = length(Ytr_raw);
-trainInfo2.valSamples = length(Yva_raw);
-trainInfo2.normMethod = 'zscore';
-trainInfo2.normStats = norm_stats;
-trainInfo2.notes = 'Model trained WITHOUT cross-validation (Z-score normalized)';
-
-logPath2 = writeNLARXLog('logs', [datasetName '_NoCV'], trainInfo2);
-fprintf('Log saved: %s\n', logPath2);
+logPath = writeNLARXLog('logs', datasetName, trainInfo);
+fprintf('Log saved: %s\n', logPath);
 
 fprintf('\nTraining completed successfully!\n');
 fprintf('Results are saved in the logs folder.\n');

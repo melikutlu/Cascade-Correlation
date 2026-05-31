@@ -1,0 +1,24 @@
+=====================================
+    NLARX Training Results Log
+=====================================
+Dataset: dryer2
+Timestamp: 2026-05-18 16:33:30
+
+--- Configuration ---
+Activation: sigmoid
+Orders: [1 1 1]
+Max Hidden Units: 20
+
+--- Performance Metrics ---
+Training RMSE: 0.570284
+Validation RMSE: 0.558568
+Training Fit: 31.89%
+Validation Fit: 31.78%
+
+--- Data Information ---
+Training Samples: 500
+Validation Samples: 500
+
+--- Additional Details ---
+Notes: Model trained without cross-validation (Z-score normalized). All figures saved as PNG.
+=====================================

@@ -1,0 +1,60 @@
+Data source : robotarmdata
+CCNN Parameter Log
+Created      : 2026-05-21 17:35:24
+Script       : writeParameterLog.m
+Run folder   : fitTr25_fitVa25_reg2_tustin
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=100/20 | hidden=4/15 | regressors=2 | cand_runs=7
+Hidden added : 4
+Hidden max   : 15
+Output plateau epoch : 100
+Candidate epochs (per unit)  : [126 30 23 21 24 25 21]
+Candidate plateau epochs      : [126 30 23 21 24 25 21]
+Data source   : robotarmdata
+Robot arm original sampling time : 0.0005
+Robot arm sampling time : 0.005
+Robot arm downsample factor : 10
+Robot arm validation experiment : 3
+N-step horizon : 20
+Train obj MSE  : 0.565929
+Val   obj MSE  : 0.71488
+Train series RMSE : 15.6652
+Val   RMSE      : 17.6065
+Train Fit (%)   : 24.77
+Val   Fit (%)   : 25.11
+
+Hidden units per stage : [0 1 2 3 4 5 6]
+Train obj MSE history  : [0.593128323743708 0.58135544396388 0.573205593425154 0.573326497008425 0.565928623034987 0.566355357710022 0.567435324070805]
+Val   obj MSE history  : [0.738386040948883 0.727740680240445 0.72217254175374 0.721109462128658 0.714880082007078 0.715811485587493 0.715919093448163]
+Train RMSE history     : [16.0372791082972 15.8773210908907 15.7656385570611 15.7673011557117 15.6652447941152 15.6711498174457 15.6860841285379]
+Val   RMSE history     : [17.8936152470327 17.7641602416077 17.6960705790734 17.6830409640587 17.606496890062 17.617962740577 17.6192869439975]
+Train Fit history (%)  : [22.9851751065052 23.7533315136916 24.2896575780115 24.2816733842413 24.7717722822241 24.7434149570992 24.6716968466951]
+Val   Fit history (%)  : [23.8897706878123 24.4404056496399 24.7300240279122 24.7854453037652 25.1110243968638 25.0622545703132 25.056622090538]
+Best validation stage  : #5 (hidden=4)
+Best validation metric : validation fit = 25.111
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.593128323743708 0.58135544396388 0.573205593425154 0.573326497008425 0.565928623034987]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : tustin
+Activation clipping : 1
+Tustin sample time : 0.005
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg2_tustin.png
+ - Val_reg2_tustin.png
+ - LossFinal_reg2_tustin.png
+ - LossBeforeRevert_reg2_tustin.png
+ - CandidateCorr_reg2_tustin.png
+ - LossHistory_reg2_tustin.png

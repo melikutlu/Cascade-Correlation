@@ -1,0 +1,24 @@
+=====================================
+    NLARX Training Results Log
+=====================================
+Dataset: robotarmdata
+Timestamp: 2026-05-21 17:09:37
+
+--- Configuration ---
+Activation: sigmoid
+Orders: [2 2 0]
+Max Hidden Units: 20
+
+--- Performance Metrics ---
+Training RMSE: 6.63749
+Validation RMSE: 3.80161
+Training Fit: 68.12%
+Validation Fit: 83.83%
+
+--- Data Information ---
+Training Samples: 1984
+Validation Samples: 1984
+
+--- Additional Details ---
+Notes: Model trained without cross-validation (Z-score normalized). All figures saved as PNG.
+=====================================

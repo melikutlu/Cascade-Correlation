@@ -1,0 +1,56 @@
+============================================
+SYSTEM IDENTIFICATION RUN LOG
+============================================
+
+Timestamp           : 2026-05-18_17-27-15
+Dataset             : dryer2
+Model type          : ss
+Mode                : simulation
+Sampling time       : 0.080000
+Train samples       : 500
+Validation samples  : 500
+
+SS order            : 2
+
+RMSE                : 0.1719083500
+MSE                 : 0.0295524808
+MAE                 : 0.1367361665
+Fit (%)             : 79.0043689417
+
+--------------------------------------------
+IDENTIFIED MODEL SUMMARY
+--------------------------------------------
+  <a href="matlab:helpPopup('idss')" style="font-weight:bold">idss</a> with properties:
+
+                A: [2×2 double]
+                B: [2×1 double]
+                C: [18.4435 -0.3666]
+                D: 0
+                K: [2×1 double]
+        StateName: {2×1 cell}
+        StateUnit: {2×1 cell}
+        Structure: [1×1 pmodel.ss]
+    NoiseVariance: 5.8410e-04
+       InputDelay: 0
+      OutputDelay: 0
+        InputName: {'u1'}
+        InputUnit: {''}
+       InputGroup: [1×1 struct]
+       OutputName: {'y1'}
+       OutputUnit: {''}
+      OutputGroup: [1×1 struct]
+            Notes: [0×1 string]
+         UserData: []
+             Name: ''
+               Ts: 0
+         TimeUnit: 'seconds'
+     SamplingGrid: [1×1 struct]
+           Report: [1×1 idresults.ssest]
+
+
+
+--------------------------------------------
+SAVED FIGURES
+--------------------------------------------
+log/dryer2_ss_simulation_2026-05-18_17-27-15/output_comparison.png
+log/dryer2_ss_simulation_2026-05-18_17-27-15/error_signal.png

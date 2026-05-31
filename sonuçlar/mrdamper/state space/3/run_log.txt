@@ -1,0 +1,56 @@
+============================================
+SYSTEM IDENTIFICATION RUN LOG
+============================================
+
+Timestamp           : 2026-05-18_17-30-45
+Dataset             : mrdamper
+Model type          : ss
+Mode                : simulation
+Sampling time       : 0.010000
+Train samples       : 1749
+Validation samples  : 1750
+
+SS order            : 3
+
+RMSE                : 31.6446226221
+MSE                 : 1001.3821408972
+MAE                 : 26.4424005505
+Fit (%)             : 43.5652681757
+
+--------------------------------------------
+IDENTIFIED MODEL SUMMARY
+--------------------------------------------
+  <a href="matlab:helpPopup('idss')" style="font-weight:bold">idss</a> with properties:
+
+                A: [3×3 double]
+                B: [3×1 double]
+                C: [1.2907e+03 -66.8493 0.0770]
+                D: 0
+                K: [3×1 double]
+        StateName: {3×1 cell}
+        StateUnit: {3×1 cell}
+        Structure: [1×1 pmodel.ss]
+    NoiseVariance: 0.1333
+       InputDelay: 0
+      OutputDelay: 0
+        InputName: {'u1'}
+        InputUnit: {''}
+       InputGroup: [1×1 struct]
+       OutputName: {'y1'}
+       OutputUnit: {''}
+      OutputGroup: [1×1 struct]
+            Notes: [0×1 string]
+         UserData: []
+             Name: ''
+               Ts: 0
+         TimeUnit: 'seconds'
+     SamplingGrid: [1×1 struct]
+           Report: [1×1 idresults.ssest]
+
+
+
+--------------------------------------------
+SAVED FIGURES
+--------------------------------------------
+log/mrdamper_ss_simulation_2026-05-18_17-30-45/output_comparison.png
+log/mrdamper_ss_simulation_2026-05-18_17-30-45/error_signal.png

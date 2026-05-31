@@ -1,0 +1,56 @@
+Data source : mrDamper
+CCNN Parameter Log
+Created      : 2026-05-18 17:55:37
+Script       : writeParameterLog.m
+Run folder   : fitTr52_fitVa47
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=4/15 | regressors=4 | cand_runs=4
+Hidden added : 4
+Hidden max   : 15
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [300 300 300 42]
+Candidate plateau epochs      : [NaN NaN NaN 42]
+Data source   : mrDamper
+N-step horizon : 20
+Train obj MSE  : 0.233812
+Val   obj MSE  : 0.256377
+Train series RMSE : 28.3548
+Val   RMSE      : 29.6915
+Train Fit (%)   : 51.63
+Val   Fit (%)   : 47.04
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.232604023166798 0.233762249899462 0.233799438082759 0.233774204783253 0.233812290798706]
+Val   obj MSE history  : [0.262008330360043 0.260283818731929 0.258943427207721 0.257306084942372 0.256377019994449]
+Train RMSE history     : [28.2814632239994 28.3517880421801 28.3540431316166 28.3525130052528 28.3548224779166]
+Val   RMSE history     : [30.0158615816001 29.9169178611859 29.8397863990196 29.7452958314065 29.6915460282542]
+Train Fit history (%)  : [51.7519454042631 51.6319715669782 51.6281243941006 51.6307347830948 51.6267948326655]
+Val   Fit history (%)  : [46.465744569691 46.6422138803414 46.7797803262053 46.9483072954746 47.0441717997622]
+Best validation stage  : #5 (hidden=4)
+Best validation metric : validation fit = 47.0442
+Hidden growth reverted to baseline during search.
+MSE history (final selected prefix): [0.232604023166798 0.233762249899462 0.233799438082759 0.233774204783253 0.233812290798706]
+Regressors.u : [1 2]
+Regressors.y : [1 2]
+Norm method  : zscore
+Activation   : tustin
+Activation clipping : 1
+Tustin sample time : 1
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

@@ -1,0 +1,60 @@
+Data source : robotarmdata
+CCNN Parameter Log
+Created      : 2026-05-21 16:31:00
+Script       : writeParameterLog.m
+Run folder   : fitTr35_fitVa37_reg2_diff-tanh
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=1/15 | regressors=2 | cand_runs=6
+Hidden added : 1
+Hidden max   : 15
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [300 270 133 141 76 192]
+Candidate plateau epochs      : [NaN 270 133 141 76 192]
+Data source   : robotarmdata
+Robot arm original sampling time : 0.0005
+Robot arm sampling time : 0.005
+Robot arm downsample factor : 10
+Robot arm validation experiment : 3
+N-step horizon : 20
+Train obj MSE  : 0.416986
+Val   obj MSE  : 0.511495
+Train series RMSE : 13.4467
+Val   RMSE      : 14.8928
+Train Fit (%)   : 35.43
+Val   Fit (%)   : 36.65
+
+Hidden units per stage : [0 1 2 3 4 5]
+Train obj MSE history  : [0.593128323743708 0.416986302243049 0.378508775967073 0.336053073546503 0.139115404636834 0.147147475666516]
+Val   obj MSE history  : [0.738386040948883 0.511495487572793 0.729851440797757 0.770920269110153 0.647962908280548 2408524876.82902]
+Train RMSE history     : [16.0372791082972 13.4467475141056 12.8113333766464 12.0714736795441 7.7668330060058 7.98790265984817]
+Val   RMSE history     : [17.8936152470327 14.8928309301012 17.7899034359908 18.2835737558457 16.7622158516597 1021955.35587541]
+Train Fit history (%)  : [22.9851751065052 35.4255233576316 38.4769330263677 42.0299150898028 62.70182242915 61.6401934230722]
+Val   Fit history (%)  : [23.8897706878123 36.6535626507553 24.3309073509071 22.2310879052527 28.7021613778262 -4346772.07747997]
+Best validation stage  : #2 (hidden=1)
+Best validation metric : validation fit = 36.6536
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.593128323743708 0.416986302243049]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff-tanh
+Activation clipping : 1
+Tustin sample time : 0.005
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg2_diff-tanh.png
+ - Val_reg2_diff-tanh.png
+ - LossFinal_reg2_diff-tanh.png
+ - LossBeforeRevert_reg2_diff-tanh.png
+ - CandidateCorr_reg2_diff-tanh.png
+ - LossHistory_reg2_diff-tanh.png

@@ -1,0 +1,56 @@
+============================================
+SYSTEM IDENTIFICATION RUN LOG
+============================================
+
+Timestamp           : 2026-05-21_16-30-45
+Dataset             : robotarmdata
+Model type          : ss
+Mode                : simulation
+Sampling time       : 0.001000
+Train samples       : 9919
+Validation samples  : 9919
+
+SS order            : 4
+
+RMSE                : 83.3527762506
+MSE                 : 6947.6853086773
+MAE                 : 68.3871517957
+Fit (%)             : -452.8767267933
+
+--------------------------------------------
+IDENTIFIED MODEL SUMMARY
+--------------------------------------------
+  <a href="matlab:helpPopup('idss')" style="font-weight:bold">idss</a> with properties:
+
+                A: [4×4 double]
+                B: [4×1 double]
+                C: [2.0322e+03 5.0032 2.8676 -0.9498]
+                D: 0
+                K: [4×1 double]
+        StateName: {4×1 cell}
+        StateUnit: {4×1 cell}
+        Structure: [1×1 pmodel.ss]
+    NoiseVariance: 0.0204
+       InputDelay: 0
+      OutputDelay: 0
+        InputName: {'u1'}
+        InputUnit: {''}
+       InputGroup: [1×1 struct]
+       OutputName: {'y1'}
+       OutputUnit: {''}
+      OutputGroup: [1×1 struct]
+            Notes: [0×1 string]
+         UserData: []
+             Name: ''
+               Ts: 0
+         TimeUnit: 'seconds'
+     SamplingGrid: [1×1 struct]
+           Report: [1×1 idresults.ssest]
+
+
+
+--------------------------------------------
+SAVED FIGURES
+--------------------------------------------
+log/robotarmdata_ss_simulation_2026-05-21_16-30-45/output_comparison.png
+log/robotarmdata_ss_simulation_2026-05-21_16-30-45/error_signal.png

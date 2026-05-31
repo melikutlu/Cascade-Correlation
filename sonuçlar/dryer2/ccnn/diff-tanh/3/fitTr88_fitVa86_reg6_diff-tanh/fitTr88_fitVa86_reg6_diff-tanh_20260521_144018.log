@@ -1,0 +1,56 @@
+Data source : dryer2
+CCNN Parameter Log
+Created      : 2026-05-21 14:40:18
+Script       : writeParameterLog.m
+Run folder   : fitTr88_fitVa86_reg6_diff-tanh
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=7/15 | regressors=6 | cand_runs=8
+Hidden added : 7
+Hidden max   : 15
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [300 300 300 300 300 300 148 178]
+Candidate plateau epochs      : [NaN NaN NaN NaN NaN NaN 148 178]
+Data source   : dryer2
+Dryer2 sampling time   : 0.08
+N-step horizon : 20
+Train obj MSE  : 0.0139941
+Val   obj MSE  : 0.0198187
+Train series RMSE : 0.0991445
+Val   RMSE      : 0.117987
+Train Fit (%)   : 88.17
+Val   Fit (%)   : 85.60
+
+Hidden units per stage : [0 1 2 3 4 5 6 7]
+Train obj MSE history  : [0.0267401764593982 0.0377773764661814 0.0197105062086812 0.0231433881322071 0.0164482470658995 0.0150188340033871 0.0167460132874733 0.013994105622865]
+Val   obj MSE history  : [0.0354416478909573 0.0404197523312647 0.0282179417498721 0.0287029514162863 0.0240308370135298 0.0224564857496343 0.0226338960121407 0.0198186554951949]
+Train RMSE history     : [0.13704970775995 0.162896546237897 0.117664341430342 0.127499783934895 0.107486962389457 0.10271032134955 0.10845552852862 0.0991444831563902]
+Val   RMSE history     : [0.157780356379134 0.16849724462884 0.140785732789435 0.141990489805965 0.129921321187763 0.125593416972267 0.126088546246251 0.117986705213868]
+Train Fit history (%)  : [83.647436615191 80.5634310276135 85.9604691405714 84.7869190498624 87.1748185804754 87.7447601487448 87.0592507369396 88.1702305567208]
+Val   Fit history (%)  : [80.7404397759569 79.4322759500141 82.8148993856454 82.6678399490483 84.1410707440013 84.6693591431093 84.6089208712621 85.5978772842763]
+Best validation stage  : #8 (hidden=7)
+Best validation metric : validation fit = 85.5979
+MSE history (final selected prefix): [0.0267401764593982 0.0377773764661814 0.0197105062086812 0.0231433881322071 0.0164482470658995 0.0150188340033871 0.0167460132874733 0.013994105622865]
+Regressors.u : [1 2 3]
+Regressors.y : [1 2 3]
+Norm method  : zscore
+Activation   : diff-tanh
+Activation clipping : 1
+Tustin sample time : 0.08
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg6_diff-tanh.png
+ - Val_reg6_diff-tanh.png
+ - LossFinal_reg6_diff-tanh.png
+ - LossBeforeRevert_reg6_diff-tanh.png
+ - CandidateCorr_reg6_diff-tanh.png
+ - LossHistory_reg6_diff-tanh.png

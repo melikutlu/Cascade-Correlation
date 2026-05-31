@@ -1,0 +1,57 @@
+Data source : dryer2
+CCNN Parameter Log
+Created      : 2026-05-21 14:31:20
+Script       : writeParameterLog.m
+Run folder   : fitTr74_fitVa65_reg4_tanh
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=80/20 | hidden=3/15 | regressors=4 | cand_runs=6
+Hidden added : 3
+Hidden max   : 15
+Output plateau epoch : 80
+Candidate epochs (per unit)  : [59 21 34 300 22 29]
+Candidate plateau epochs      : [59 21 34 NaN 22 29]
+Data source   : dryer2
+Dryer2 sampling time   : 0.08
+N-step horizon : 20
+Train obj MSE  : 0.0654899
+Val   obj MSE  : 0.114524
+Train series RMSE : 0.214478
+Val   RMSE      : 0.283625
+Train Fit (%)   : 74.41
+Val   Fit (%)   : 65.38
+
+Hidden units per stage : [0 1 2 3 4 5]
+Train obj MSE history  : [0.286530164912213 0.286918271810613 0.224394080500542 0.0654899453339587 0.109340387289059 0.119854165580518]
+Val   obj MSE history  : [0.294289315876133 0.295184157018804 0.242619811714386 0.11452422906576 0.155939194614539 0.165515289726771]
+Train RMSE history     : [0.448622606450249 0.448926334696149 0.397010211514134 0.214478267726046 0.277131749418479 0.290149980510529]
+Val   RMSE history     : [0.454656314396508 0.455347023082239 0.412818460621482 0.283625103808074 0.330958563452619 0.340969112097851]
+Train Fit history (%)  : [46.471030637398 46.4347902434999 52.6293433651633 74.4087782091635 66.9330597461295 65.379744145751]
+Val   Fit history (%)  : [44.5020858786766 44.4177740807101 49.6090502874056 65.3791201059522 59.601331048068 58.3793870181961]
+Best validation stage  : #4 (hidden=3)
+Best validation metric : validation fit = 65.3791
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.286530164912213 0.286918271810613 0.224394080500542 0.0654899453339587]
+Regressors.u : [1 2]
+Regressors.y : [1 2]
+Norm method  : zscore
+Activation   : tanh
+Activation clipping : 1
+Tustin sample time : 0.08
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg4_tanh.png
+ - Val_reg4_tanh.png
+ - LossFinal_reg4_tanh.png
+ - LossBeforeRevert_reg4_tanh.png
+ - CandidateCorr_reg4_tanh.png
+ - LossHistory_reg4_tanh.png

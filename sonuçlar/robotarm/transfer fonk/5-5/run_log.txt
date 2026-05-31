@@ -1,0 +1,55 @@
+============================================
+SYSTEM IDENTIFICATION RUN LOG
+============================================
+
+Timestamp           : 2026-05-21_16-25-34
+Dataset             : robotarmdata
+Model type          : tf
+Mode                : simulation
+Sampling time       : 0.001000
+Train samples       : 9919
+Validation samples  : 9919
+
+TF numerator order  : 5
+TF denominator order: 5
+TF input delay      : 0
+
+RMSE                : 5.7805269887
+MSE                 : 33.4144922672
+MAE                 : 3.5875075622
+Fit (%)             : 61.6579196948
+
+--------------------------------------------
+IDENTIFIED MODEL SUMMARY
+--------------------------------------------
+  <a href="matlab:helpPopup('idtf')" style="font-weight:bold">idtf</a> with properties:
+
+        Numerator: [-0.1518 64.6872 -1.0728e+03 6.9581e+05 -2.8983e+05 1.2898e+08]
+      Denominator: [1 16.7791 1.2217e+04 7.9923e+04 8.3524e+06 6.1195e+06]
+         Variable: 's'
+          IODelay: 0
+        Structure: [1×1 pmodel.tf]
+    NoiseVariance: 0.0043
+       InputDelay: 0
+      OutputDelay: 0
+        InputName: {'u1'}
+        InputUnit: {''}
+       InputGroup: [1×1 struct]
+       OutputName: {'y1'}
+       OutputUnit: {''}
+      OutputGroup: [1×1 struct]
+            Notes: [0×1 string]
+         UserData: []
+             Name: ''
+               Ts: 0
+         TimeUnit: 'seconds'
+     SamplingGrid: [1×1 struct]
+           Report: [1×1 idresults.tfest]
+
+
+
+--------------------------------------------
+SAVED FIGURES
+--------------------------------------------
+log/robotarmdata_tf_simulation_2026-05-21_16-25-34/output_comparison.png
+log/robotarmdata_tf_simulation_2026-05-21_16-25-34/error_signal.png

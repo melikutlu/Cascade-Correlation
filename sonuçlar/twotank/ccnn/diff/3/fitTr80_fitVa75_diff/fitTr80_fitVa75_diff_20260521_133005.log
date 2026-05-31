@@ -1,0 +1,58 @@
+Data source : twotankdata
+CCNN Parameter Log
+Created      : 2026-05-21 13:30:05
+Script       : writeParameterLog.m
+Run folder   : fitTr80_fitVa75_diff
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=4/15 | regressors=6 | cand_runs=5
+Hidden added : 4
+Hidden max   : 15
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [60 113 52 27 130]
+Candidate plateau epochs      : [60 113 52 27 130]
+Data source   : twotankdata
+Twotank sampling time : 0.2
+Twotank warmup samples : 20
+Twotank filter cutoff  : 0.066902
+N-step horizon : 20
+Train obj MSE  : 0.0405026
+Val   obj MSE  : 0.0857436
+Train series RMSE : 0.0333053
+Val   RMSE      : 0.0484588
+Train Fit (%)   : 79.87
+Val   Fit (%)   : 75.39
+
+Hidden units per stage : [0 1 2 3 4]
+Train obj MSE history  : [0.0424292632390726 0.0424261495105122 0.0427257721467924 0.0409286127996993 0.0405025773959171]
+Val   obj MSE history  : [0.0911853908191813 0.0914697875330793 0.0925480331376384 0.0875599110560857 0.0857436240268852]
+Train RMSE history     : [0.0340882601701376 0.034087009340774 0.0342071624902619 0.0334800118638267 0.0333053054382999]
+Val   RMSE history     : [0.0499729195123801 0.0500507887286621 0.0503449237326936 0.0489693958966381 0.0484588393769094]
+Train Fit history (%)  : [79.4000841797588 79.4008400698942 79.3282301815445 79.7676554152889 79.8732324568024]
+Val   Fit history (%)  : [74.6234748606274 74.5839324415763 74.4345690584278 75.1330697074228 75.3923331341825]
+Best validation stage  : #5 (hidden=4)
+Best validation metric : validation fit = 75.3923
+MSE history (final selected prefix): [0.0424292632390726 0.0424261495105122 0.0427257721467924 0.0409286127996993 0.0405025773959171]
+Regressors.u : [1 2 3]
+Regressors.y : [1 2 3]
+Norm method  : zscore
+Activation   : diff
+Activation clipping : 1
+Tustin sample time : 0.2
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_diff.png
+ - Val_diff.png
+ - LossFinal_diff.png
+ - LossBeforeRevert_diff.png
+ - CandidateCorr_diff.png
+ - LossHistory_diff.png

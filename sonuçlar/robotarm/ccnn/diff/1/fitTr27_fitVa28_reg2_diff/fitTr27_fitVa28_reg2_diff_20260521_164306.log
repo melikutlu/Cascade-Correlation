@@ -1,0 +1,60 @@
+Data source : robotarmdata
+CCNN Parameter Log
+Created      : 2026-05-21 16:43:06
+Script       : writeParameterLog.m
+Run folder   : fitTr27_fitVa28_reg2_diff
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=120/20 | hidden=2/15 | regressors=2 | cand_runs=11
+Hidden added : 2
+Hidden max   : 15
+Output plateau epoch : 120
+Candidate epochs (per unit)  : [223 63 66 97 57 76 60 41 77 57 45]
+Candidate plateau epochs      : [223 63 66 97 57 76 60 41 77 57 45]
+Data source   : robotarmdata
+Robot arm original sampling time : 0.0005
+Robot arm sampling time : 0.005
+Robot arm downsample factor : 10
+Robot arm validation experiment : 3
+N-step horizon : 20
+Train obj MSE  : 0.527847
+Val   obj MSE  : 0.655386
+Train series RMSE : 15.129
+Val   RMSE      : 16.858
+Train Fit (%)   : 27.35
+Val   Fit (%)   : 28.29
+
+Hidden units per stage : [0 1 2 3 4 5 6 7 8 9 10]
+Train obj MSE history  : [0.593128323743708 0.574153145295822 0.527847163395862 0.444488941196719 0.335897798947592 0.26376477407485 0.320145795404831 0.227770974051396 0.243363957925162 0.234101956884139 0.222372107779721]
+Val   obj MSE history  : [0.738386040948883 0.71750113297814 0.655385660320964 0.709079649845823 0.659843617541028 0.668915294849652 0.798705808665643 0.773313182151008 0.736057776971888 0.709524530104378 0.719700051303305]
+Train RMSE history     : [16.0372791082972 15.7786640681977 15.1290079780951 13.8831122792464 12.0686845221921 10.6946051118752 11.7823048993571 9.93814995379588 10.2726971730487 10.0753206804625 9.81966138661644]
+Val   RMSE history     : [17.8936152470327 17.6387437698105 16.8579524036879 17.5349231425894 16.915189440795 17.0310694141262 18.6101458741387 18.3119275986291 17.8653820799842 17.5404230310286 17.6657517309778]
+Train Fit history (%)  : [22.9851751065052 24.2271059785433 27.346908887901 33.3299960708601 42.0433092861386 48.6419651092801 43.418572281611 52.2746425195721 50.6680672810064 51.6159160970037 52.8436527732183]
+Val   Fit history (%)  : [23.8897706878123 24.9738627680717 28.2949473616628 25.4154622791847 28.0514904660476 27.5585967035987 20.8420182026186 22.1104852519411 24.0098600486598 25.3920685845891 24.8589848024218]
+Best validation stage  : #3 (hidden=2)
+Best validation metric : validation fit = 28.2949
+Final model note : selected from an earlier validation stage, not the last hidden-added stage.
+MSE history (final selected prefix): [0.593128323743708 0.574153145295822 0.527847163395862]
+Regressors.u : 1
+Regressors.y : 1
+Norm method  : zscore
+Activation   : diff
+Activation clipping : 1
+Tustin sample time : 0.005
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train_reg2_diff.png
+ - Val_reg2_diff.png
+ - LossFinal_reg2_diff.png
+ - LossBeforeRevert_reg2_diff.png
+ - CandidateCorr_reg2_diff.png
+ - LossHistory_reg2_diff.png

@@ -1,0 +1,55 @@
+Data source : mrDamper
+CCNN Parameter Log
+Created      : 2026-05-18 19:01:12
+Script       : writeParameterLog.m
+Run folder   : fitTr78_fitVa75
+
+eta_out=0.0005 | eta_cand=0.0005 | output_epochs=60/20 | hidden=8/15 | regressors=4 | cand_runs=9
+Hidden added : 8
+Hidden max   : 15
+Output plateau epoch : 60
+Candidate epochs (per unit)  : [273 268 300 300 300 266 300 300 180]
+Candidate plateau epochs      : [273 268 NaN NaN NaN 266 NaN NaN 180]
+Data source   : mrDamper
+N-step horizon : 20
+Train obj MSE  : 0.0489283
+Val   obj MSE  : 0.0580911
+Train series RMSE : 12.971
+Val   RMSE      : 14.1335
+Train Fit (%)   : 77.87
+Val   Fit (%)   : 74.79
+
+Hidden units per stage : [0 1 2 3 4 5 6 7 8]
+Train obj MSE history  : [0.232604023166798 0.232006244252813 0.213832430305647 0.15072282565171 0.12744801772809 0.0798917655112375 0.0709463303990899 0.0600002095927309 0.0489283059224242]
+Val   obj MSE history  : [0.262008330360043 0.254573277480189 0.240775616676806 0.198270174855997 0.157177217367197 0.130065254644806 0.0861762309044699 0.0818579962126283 0.0580911372233942]
+Train RMSE history     : [28.2814632239994 28.2450989814071 27.1162762771891 22.7657927468423 20.9343657058843 16.5746464549752 15.6191801014097 14.3638098709477 12.97099684572]
+Val   RMSE history     : [30.0158615816001 29.586914117482 28.7739520849858 26.1109070610386 23.2481319592263 21.148224494668 17.2142066359632 16.7773675469392 14.133450539603]
+Train Fit history (%)  : [51.7519454042631 51.8139826456898 53.7397493229881 61.1616555103562 64.2860621635901 71.7237244505063 73.3537459393555 75.4954021520296 77.871535181307]
+Val   Fit history (%)  : [46.465744569691 47.2307861810355 48.6807301376493 53.4303566691694 58.536208224465 62.2814607897482 69.2979082884401 70.0770248668591 74.7925359649659]
+Best validation stage  : #9 (hidden=8)
+Best validation metric : validation fit = 74.7925
+MSE history (final selected prefix): [0.232604023166798 0.232006244252813 0.213832430305647 0.15072282565171 0.12744801772809 0.0798917655112375 0.0709463303990899 0.0600002095927309 0.0489283059224242]
+Regressors.u : [1 2]
+Regressors.y : [1 2]
+Norm method  : zscore
+Activation   : diff-tanh
+Activation clipping : 1
+Tustin sample time : 1
+Diff clip lower : -50
+Diff clip upper : 50
+Sim loss eval interval : 20
+Sim loss min blocks : 3
+Output max epochs : 1000
+Target MSE   : 0.0005
+Plateau min delta  : 0
+Moving avg window  : 20
+Hidden bootstrap count : 4
+Hidden acceptance window : 3
+
+Saved figure files:
+ - Train.png
+ - Val.png
+ - LossFinal.png
+ - LossBeforeRevert.png
+ - CandidateCorr.png
+ - LossHistory.png

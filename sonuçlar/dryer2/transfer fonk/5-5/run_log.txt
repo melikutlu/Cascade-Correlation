@@ -1,0 +1,55 @@
+============================================
+SYSTEM IDENTIFICATION RUN LOG
+============================================
+
+Timestamp           : 2026-05-18_17-26-04
+Dataset             : dryer2
+Model type          : tf
+Mode                : simulation
+Sampling time       : 0.080000
+Train samples       : 500
+Validation samples  : 500
+
+TF numerator order  : 5
+TF denominator order: 5
+TF input delay      : 0
+
+RMSE                : 0.0954641256
+MSE                 : 0.0091133993
+MAE                 : 0.0750848232
+Fit (%)             : 88.3407085187
+
+--------------------------------------------
+IDENTIFIED MODEL SUMMARY
+--------------------------------------------
+  <a href="matlab:helpPopup('idtf')" style="font-weight:bold">idtf</a> with properties:
+
+        Numerator: [-0.0048 -1.3324 37.9238 -1.3269e+03 1.5059e+04 1.1901e+03]
+      Denominator: [1 57.3130 1.0550e+03 7.7448e+03 1.7023e+04 1.2964e+03]
+         Variable: 's'
+          IODelay: 0
+        Structure: [1×1 pmodel.tf]
+    NoiseVariance: 5.3939e-04
+       InputDelay: 0
+      OutputDelay: 0
+        InputName: {'u1'}
+        InputUnit: {''}
+       InputGroup: [1×1 struct]
+       OutputName: {'y1'}
+       OutputUnit: {''}
+      OutputGroup: [1×1 struct]
+            Notes: [0×1 string]
+         UserData: []
+             Name: ''
+               Ts: 0
+         TimeUnit: 'seconds'
+     SamplingGrid: [1×1 struct]
+           Report: [1×1 idresults.tfest]
+
+
+
+--------------------------------------------
+SAVED FIGURES
+--------------------------------------------
+log/dryer2_tf_simulation_2026-05-18_17-26-04/output_comparison.png
+log/dryer2_tf_simulation_2026-05-18_17-26-04/error_signal.png

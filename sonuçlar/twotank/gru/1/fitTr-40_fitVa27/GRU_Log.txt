@@ -1,12 +1,17 @@
 GRU Baseline Log
+<<<<<<<< HEAD:sonuçlar/robotarm/gru/1/GRU_Log.txt
 Created      : 2026-05-31 12:54:29
 Data source  : robotarmdata
+========
+Created      : 2026-05-31 12:01:23
+Data source  : twotankdata
+>>>>>>>> main:sonuçlar/twotank/gru/1/fitTr-40_fitVa27/GRU_Log.txt
 Regressors u : 1
 Regressors y : 1
 Hidden units : 64
 Layers       : 1
 Dropout      : 0
-Output activation : linear
+Output activation : tanh
 Loss mode    : simulation
 Simulation horizon : 20
 Simulation batch size : 64
@@ -14,7 +19,14 @@ Max epochs   : 300
 Learn rate   : 0.001
 Validation frequency : 20
 Loss history figure : LossHistory.png
+<<<<<<<< HEAD:sonuçlar/robotarm/gru/1/GRU_Log.txt
 Train RMSE   : 15.081
 Val RMSE     : 27.6711
 Train Fit %  : 27.58
 Val Fit %    : -17.70
+========
+Train RMSE   : 0.232321
+Val RMSE     : 0.14287
+Train Fit %  : -40.39
+Val Fit %    : 27.45
+>>>>>>>> main:sonuçlar/twotank/gru/1/fitTr-40_fitVa27/GRU_Log.txt

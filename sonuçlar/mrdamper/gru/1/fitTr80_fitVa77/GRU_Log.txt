@@ -1,0 +1,25 @@
+GRU Baseline Log
+<<<<<<< HEAD:CCNN_Npred/Tüm Datasetler/GRU/logs/robotarmdata/fitTr28_fitVa-18/GRU_Log.txt
+Created      : 2026-05-31 12:54:29
+Data source  : robotarmdata
+=======
+Created      : 2026-05-31 12:42:41
+Data source  : mrDamper
+>>>>>>> main:sonuçlar/mrdamper/gru/1/fitTr80_fitVa77/GRU_Log.txt
+Regressors u : 1
+Regressors y : 1
+Hidden units : 64
+Layers       : 1
+Dropout      : 0
+Output activation : tanh
+Loss mode    : simulation
+Simulation horizon : 20
+Simulation batch size : 64
+Max epochs   : 300
+Learn rate   : 0.001
+Validation frequency : 20
+Loss history figure : LossHistory.png
+Train RMSE   : 11.471
+Val RMSE     : 13.1351
+Train Fit %  : 80.43
+Val Fit %    : 76.57

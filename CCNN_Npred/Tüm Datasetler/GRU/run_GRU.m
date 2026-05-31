@@ -19,7 +19,7 @@ addpath(ccnnVersionDir, '-begin');
 % CONFIG
 % ------------------
 config = struct();
-config.data.source = 'robotarmdata'; % twotankdata | dryer2 | mrDamper | robotarmdata
+config.data.source = 'twotankdata'; % twotankdata | dryer2 | mrDamper | robotarmdata
 config.data.train_ratio = 0.5;
 config.data.val_ratio = 0.5;
 
@@ -27,8 +27,8 @@ config.norm_method = 'zscore';
 
 % Regressors follow the same SISO convention as CCNN:
 % u lag 0 means u(t); y lag 0 is not allowed for recursive prediction.
-config.regressors.u = [1];
-config.regressors.y = [1];
+config.regressors.u = [1 2 3];
+config.regressors.y = [1 2 3];
 
 % GRU model parameters.
 config.model.hidden_units = 64;

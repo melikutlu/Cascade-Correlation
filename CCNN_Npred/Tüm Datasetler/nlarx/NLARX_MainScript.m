@@ -1,5 +1,5 @@
-% NLARX Training Script with Dataset Selection
-% This script uses MATLAB's idNeuralNetwork and nlarx for modeling
+% NLARX Training Script with Dataset and Model Type Selection
+% This script supports Cascade-Correlation and NLARX neural network models
 % Performance metrics are logged for later analysis
 
 clear; clc; close all; rng(0);
@@ -21,8 +21,9 @@ addpath(funcFolder, '-begin');
 % DATASET SELECTION MENU
 % =========================================
 fprintf('\n=====================================\n');
-fprintf('  NLARX Training - Dataset Selection\n');
+fprintf('  NLARX Training - Configuration Menu\n');
 fprintf('=====================================\n\n');
+fprintf('--- Dataset Selection ---\n');
 
 availableDatasets = {'twotankdata', 'dryer2', 'mrdamper', 'robotarmdata'};
 fprintf('Available datasets:\n');
@@ -37,6 +38,27 @@ if datasetChoice < 1 || datasetChoice > length(availableDatasets)
 end
 datasetName = availableDatasets{datasetChoice};
 fprintf('\nSelected: %s\n\n', datasetName);
+
+% =========================================
+% MODEL TYPE SELECTION MENU
+% =========================================
+fprintf('=====================================\n');
+fprintf('  Model Type Selection\n');
+fprintf('=====================================\n\n');
+
+availableModels = {'Cascade-Correlation Neural Network', 'NLARX with Sigmoid NN', 'NLARX with Neural Network'};
+fprintf('Available models:\n');
+for i = 1:length(availableModels)
+    fprintf('  %d: %s\n', i, availableModels{i});
+end
+fprintf('\n');
+
+modelChoice = input('Select model type (1-3): ');
+if modelChoice < 1 || modelChoice > length(availableModels)
+    error('Invalid choice. Please select 1-3.');
+end
+modelName = availableModels{modelChoice};
+fprintf('\nSelected: %s\n\n', modelName);
 
 % =========================================
 % CONFIGURE DATA LOADING
@@ -146,27 +168,74 @@ grid on;
 % =========================================
 fprintf('\n--- Model Configuration ---\n');
 
-% Neural network setup: cascade-correlation, sigmoid
-activation = 'sigmoid';
-maxHiddenUnits = 20;
-fprintf('Activation function: %s\n', activation);
-fprintf('Max hidden units: %d\n', maxHiddenUnits);
-
-% Create network
-f = idNeuralNetwork("cascade-correlation", activation, 0, 0, ...
-    MaxNumActLayers=maxHiddenUnits, SizeSelection='off');
-fprintf('Neural network created.\n');
-
-% Regressor orders: [na, nb, nk]
-% na = output lag order
-% nb = input lag order  
-% nk = dead time (delay)
-if strcmpi(datasetName, 'robotarmdata')
-    orders = [3, 3, 0];  % MathWorks robot arm NLARX example: y(t-1:t-3), u(t:t-4)
-else
-    orders = [3, 3, 1];  % General fallback choice for the other SISO datasets
+% Configure model based on selection
+switch modelChoice
+    case 1  % Cascade-Correlation Neural Network
+        fprintf('Model Type: Cascade-Correlation Neural Network\n');
+        activation = 'sigmoid';
+        maxHiddenUnits = 20;
+        fprintf('Activation function: %s\n', activation);
+        fprintf('Max hidden units: %d\n', maxHiddenUnits);
+        
+        % Create cascade-correlation network
+        f = idNeuralNetwork("cascade-correlation", activation, 0, 0, ...
+            MaxNumActLayers=maxHiddenUnits, SizeSelection='off');
+        fprintf('Cascade-Correlation neural network created.\n');
+        
+    case 2  % NLARX with Sigmoid Neural Network
+        fprintf('Model Type: NLARX with Sigmoid Neural Network\n');
+        activation = 'sigmoid';
+        layerSizes = [8 5];  % 2 hidden layers: 8 and 5 units (reduced for stability)
+        fprintf('Activation function: %s\n', activation);
+        fprintf('Layer sizes: %s\n', mat2str(layerSizes));
+        
+        % Create feedforward neural network with sigmoid activation
+        % idNeuralNetwork requires layer sizes as vector, not string
+        f = idNeuralNetwork(layerSizes, activation, 0, 0);
+        fprintf('Sigmoid Neural Network created.\n');
+        
+    case 3  % NLARX with Neural Network (default activation - typically ReLU)
+        fprintf('Model Type: NLARX with Neural Network (ReLU activation)\n');
+        activation = 'relu';
+        layerSizes = [8 5];  % 2 hidden layers: 8 and 5 units (reduced for stability)
+        fprintf('Activation function: %s\n', activation);
+        fprintf('Layer sizes: %s\n', mat2str(layerSizes));
+        
+        % Create feedforward neural network with ReLU activation
+        f = idNeuralNetwork(layerSizes, activation, 0, 0);
+        fprintf('Neural Network (ReLU) created.\n');
 end
-fprintf('Regressor orders (na, nb, nk): [%d, %d, %d]\n\n', orders(1), orders(2), orders(3));
+
+% =========================================
+% REGRESSOR ORDERS CONFIGURATION
+% =========================================
+fprintf('\n--- Regressor Orders Selection ---\n');
+fprintf('Regressor orders [na, nb, nk]:\n');
+fprintf('  na = output lag order\n');
+fprintf('  nb = input lag order\n');
+fprintf('  nk = dead time (delay)\n\n');
+
+fprintf('Preset options:\n');
+fprintf('  1: [2, 2, 0] - minimal orders\n');
+fprintf('  2: [2, 2, 1] - minimal with delay\n');
+fprintf('  3: [3, 3, 0] - moderate orders\n');
+fprintf('  4: [3, 3, 1] - moderate with delay (recommended)\n');
+fprintf('  5: [4, 4, 1] - higher order\n\n');
+
+orderChoice = input('Select regressor orders (1-5, default 4): ');
+if isempty(orderChoice)
+    orderChoice = 4;
+end
+
+orderOptions = {[2, 2, 0], [2, 2, 1], [3, 3, 0], [3, 3, 1], [4, 4, 1]};
+if orderChoice >= 1 && orderChoice <= length(orderOptions)
+    orders = orderOptions{orderChoice};
+else
+    orders = [3, 3, 1];  % Default fallback
+    fprintf('Invalid choice. Using default: [3, 3, 1]\n');
+end
+
+fprintf('Selected orders: [%d, %d, %d]\n\n', orders(1), orders(2), orders(3));
 
 % =========================================
 % TRAINING OPTIONS - WITHOUT CROSS-VALIDATION
@@ -210,7 +279,18 @@ fprintf('  Validation Fit: %.2f%%\n', fit_va);
 fprintf('  Validation RMSE (raw data): %.6g\n\n', rmse_va);
 
 % Create log directory if it doesn't exist
-logDir = fullfile(scriptDir, 'logs', datasetName);
+% Log directory includes both dataset and model type for organization
+modelDirName = '';
+switch modelChoice
+    case 1
+        modelDirName = 'cascadeCorrelation';
+    case 2
+        modelDirName = 'nlarxSigmoid';
+    case 3
+        modelDirName = 'nlarxReLU';
+end
+
+logDir = fullfile(scriptDir, 'logs', datasetName, modelDirName);
 if ~exist(logDir, 'dir')
     mkdir(logDir);
 end
@@ -219,18 +299,18 @@ end
 fig1 = figure('Name', 'Training Fit', 'Color', 'w');
 plot(Ytr_raw, 'k', 'LineWidth', 1.4); hold on;
 plot(yhat_tr_raw, 'b--', 'LineWidth', 1.2); grid on;
-title(sprintf('%s - Training Data (Fit=%.2f%%, RMSE=%.4g)', datasetName, fit_tr, rmse_tr));
+title(sprintf('%s - %s - Training Data (Fit=%.2f%%, RMSE=%.4g)', datasetName, modelName, fit_tr, rmse_tr));
 legend('True Data', 'Model Simulation', 'Location', 'best');
-trainingFigPath = fullfile(logDir, sprintf('%s_Training_Fit.png', datasetName));
+trainingFigPath = fullfile(logDir, sprintf('%s_%s_Training_Fit.png', datasetName, modelDirName));
 saveas(fig1, trainingFigPath, 'png');
 fprintf('Training figure saved: %s\n', trainingFigPath);
 
 fig2 = figure('Name', 'Validation Fit', 'Color', 'w');
 plot(Yva_raw, 'k', 'LineWidth', 1.4); hold on;
 plot(yhat_va_raw, 'r--', 'LineWidth', 1.2); grid on;
-title(sprintf('%s - Validation Data (Fit=%.2f%%, RMSE=%.4g)', datasetName, fit_va, rmse_va));
+title(sprintf('%s - %s - Validation Data (Fit=%.2f%%, RMSE=%.4g)', datasetName, modelName, fit_va, rmse_va));
 legend('True Data', 'Model Simulation', 'Location', 'best');
-validationFigPath = fullfile(logDir, sprintf('%s_Validation_Fit.png', datasetName));
+validationFigPath = fullfile(logDir, sprintf('%s_%s_Validation_Fit.png', datasetName, modelDirName));
 saveas(fig2, validationFigPath, 'png');
 fprintf('Validation figure saved: %s\n', validationFigPath);
 
@@ -246,7 +326,7 @@ metrics(isnan(metrics)) = 0;
 bar([1, 2], metrics, 'FaceColor', [0.2 0.4 0.8], 'EdgeColor', 'k', 'LineWidth', 1.5);
 xlabel('Data Set'); ylabel('MSE (Mean Squared Error)');
 set(gca, 'XTickLabel', {'Training', 'Validation'});
-title(sprintf('%s - Loss Metrics (MSE)', datasetName));
+title(sprintf('%s - %s - Loss Metrics (MSE)', datasetName, modelName));
 
 % Set ylim safely (check for valid values)
 if ~all(isnan(metrics)) && max(metrics) > 0
@@ -261,7 +341,7 @@ for i = 1:2
     end
 end
 grid on; set(gca, 'GridLineStyle', ':');
-lossFigPath = fullfile(logDir, sprintf('%s_Loss_Metrics.png', datasetName));
+lossFigPath = fullfile(logDir, sprintf('%s_%s_Loss_Metrics.png', datasetName, modelDirName));
 saveas(fig3, lossFigPath, 'png');
 fprintf('Loss metrics figure saved: %s\n', lossFigPath);
 
@@ -284,8 +364,9 @@ fprintf('\nSaving training logs...\n\n');
 % Log training information
 trainInfo = struct();
 trainInfo.dataset = datasetName;
+trainInfo.modelType = modelName;
+trainInfo.modelChoice = modelChoice;
 trainInfo.activation = activation;
-trainInfo.maxHiddenUnits = maxHiddenUnits;
 trainInfo.orders = orders;
 trainInfo.crossValidation = false;
 trainInfo.trainFit = fit_tr;
@@ -299,10 +380,10 @@ trainInfo.normStats = norm_stats;
 trainInfo.trainingFigure = trainingFigPath;
 trainInfo.validationFigure = validationFigPath;
 trainInfo.lossFigure = lossFigPath;
-trainInfo.notes = 'Model trained without cross-validation (Z-score normalized). All figures saved as PNG.';
+trainInfo.notes = sprintf('Model: %s. Trained without cross-validation (Z-score normalized). All figures saved as PNG.', modelName);
 
 
-logPath = writeNLARXLog('logs', datasetName, trainInfo);
+logPath = writeNLARXLog(fullfile('logs', datasetName, modelDirName), datasetName, trainInfo);
 fprintf('Log saved: %s\n', logPath);
 
 fprintf('\nTraining completed successfully!\n');

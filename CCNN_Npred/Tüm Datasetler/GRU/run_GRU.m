@@ -19,7 +19,7 @@ addpath(ccnnVersionDir, '-begin');
 % CONFIG
 % ------------------
 config = struct();
-config.data.source = 'twotankdata'; % twotankdata | dryer2 | mrDamper | robotarmdata
+config.data.source = 'mrDamper'; % twotankdata | dryer2 | mrDamper | robotarmdata
 config.data.train_ratio = 0.5;
 config.data.val_ratio = 0.5;
 

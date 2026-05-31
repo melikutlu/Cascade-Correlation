@@ -1,12 +1,12 @@
 GRU Baseline Log
-Created      : 2026-05-18 14:49:11
-Data source  : dryer2
+Created      : 2026-05-31 12:01:23
+Data source  : twotankdata
 Regressors u : 1
 Regressors y : 1
 Hidden units : 64
 Layers       : 1
 Dropout      : 0
-Output activation : linear
+Output activation : tanh
 Loss mode    : simulation
 Simulation horizon : 20
 Simulation batch size : 64
@@ -14,7 +14,7 @@ Max epochs   : 300
 Learn rate   : 0.001
 Validation frequency : 20
 Loss history figure : LossHistory.png
-Train RMSE   : 0.0710144
-Val RMSE     : 0.0912213
-Train Fit %  : 91.53
-Val Fit %    : 88.87
+Train RMSE   : 0.232321
+Val RMSE     : 0.14287
+Train Fit %  : -40.39
+Val Fit %    : 27.45

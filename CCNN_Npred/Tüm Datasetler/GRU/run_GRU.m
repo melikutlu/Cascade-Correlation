@@ -27,14 +27,14 @@ config.norm_method = 'zscore';
 
 % Regressors follow the same SISO convention as CCNN:
 % u lag 0 means u(t); y lag 0 is not allowed for recursive prediction.
-config.regressors.u = [1 2 3];
-config.regressors.y = [1 2 3];
+config.regressors.u = [1];
+config.regressors.y = [1];
 
 % GRU model parameters.
 config.model.hidden_units = 64;
 config.model.num_layers = 1;
 config.model.dropout = 0.0;
-config.model.output_activation = 'linear'; % linear | tanh | relu
+config.model.output_activation = 'tanh'; % linear | tanh | relu
 
 % Training parameters.
 config.training.max_epochs = 300;

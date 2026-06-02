@@ -172,7 +172,7 @@ fprintf('\n--- Model Configuration ---\n');
 switch modelChoice
     case 1  % Cascade-Correlation Neural Network
         fprintf('Model Type: Cascade-Correlation Neural Network\n');
-        activation = 'sigmoid';
+        activation = 'tanh';
         maxHiddenUnits = 20;
         fprintf('Activation function: %s\n', activation);
         fprintf('Max hidden units: %d\n', maxHiddenUnits);

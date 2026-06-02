@@ -1,0 +1,23 @@
+=====================================
+    NLARX Training Results Log
+=====================================
+Dataset: robotarmdata
+Timestamp: 2026-06-02 14:46:03
+
+--- Configuration ---
+Activation: tanh
+Orders: [2 2 0]
+
+--- Performance Metrics ---
+Training RMSE: 6.5049
+Validation RMSE: 23.7766
+Training Fit: 68.75%
+Validation Fit: -1.16%
+
+--- Data Information ---
+Training Samples: 1984
+Validation Samples: 1984
+
+--- Additional Details ---
+Notes: Model: Cascade-Correlation Neural Network. Trained without cross-validation (Z-score normalized). All figures saved as PNG.
+=====================================

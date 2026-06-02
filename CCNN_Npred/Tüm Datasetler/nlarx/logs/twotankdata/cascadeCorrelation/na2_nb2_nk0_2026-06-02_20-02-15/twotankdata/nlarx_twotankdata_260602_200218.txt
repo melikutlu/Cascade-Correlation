@@ -1,0 +1,23 @@
+=====================================
+    NLARX Training Results Log
+=====================================
+Dataset: twotankdata
+Timestamp: 2026-06-02 20:02:18
+
+--- Configuration ---
+Activation: tanh
+Orders: [2 2 0]
+
+--- Performance Metrics ---
+Training RMSE: 0.0168363
+Validation RMSE: 0.0392832
+Training Fit: 89.82%
+Validation Fit: 80.05%
+
+--- Data Information ---
+Training Samples: 1490
+Validation Samples: 1490
+
+--- Additional Details ---
+Notes: Model: Cascade-Correlation Neural Network. Trained without cross-validation (Z-score normalized). All figures saved as PNG.
+=====================================

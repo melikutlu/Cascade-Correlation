@@ -1,0 +1,23 @@
+=====================================
+    NLARX Training Results Log
+=====================================
+Dataset: mrdamper
+Timestamp: 2026-06-02 13:28:31
+
+--- Configuration ---
+Activation: sigmoid
+Orders: [4 4 1]
+
+--- Performance Metrics ---
+Training RMSE: 21.0296
+Validation RMSE: 27.8443
+Training Fit: 64.13%
+Validation Fit: 50.34%
+
+--- Data Information ---
+Training Samples: 1749
+Validation Samples: 1750
+
+--- Additional Details ---
+Notes: Model: Cascade-Correlation Neural Network. Trained without cross-validation (Z-score normalized). All figures saved as PNG.
+=====================================

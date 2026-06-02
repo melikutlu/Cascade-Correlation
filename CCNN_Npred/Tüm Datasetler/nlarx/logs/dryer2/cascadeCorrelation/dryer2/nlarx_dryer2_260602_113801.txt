@@ -1,0 +1,23 @@
+=====================================
+    NLARX Training Results Log
+=====================================
+Dataset: dryer2
+Timestamp: 2026-06-02 11:38:01
+
+--- Configuration ---
+Activation: sigmoid
+Orders: [2 2 1]
+
+--- Performance Metrics ---
+Training RMSE: 0.13643
+Validation RMSE: 0.12767
+Training Fit: 83.71%
+Validation Fit: 84.41%
+
+--- Data Information ---
+Training Samples: 500
+Validation Samples: 500
+
+--- Additional Details ---
+Notes: Model: Cascade-Correlation Neural Network. Trained without cross-validation (Z-score normalized). All figures saved as PNG.
+=====================================
